@@ -96,7 +96,7 @@ func load_mdl(filename):
 	
 	var itriangle_t = parser.create("itriangle")
 	itriangle_t.add("facesfront",	parser.T_U32,		0		)
-	itriangle_t.add("vertices",	parser.T_U32_ARR,	4,	3	)
+	itriangle_t.add("vertices",		parser.T_U32_ARR,	4,	3	)
 	
 	for i in range(0, mdl.header.num_tris):
 		itriangles.append( itriangle_t.eval_as_array(data, offset) )
@@ -289,34 +289,41 @@ func get_skin(mdl, index):
 			for y in range(0,h):
 				image.set_pixel(x,y, pallete.color[data[x+y*w]])
 		
-		image.unlock()
-		
+		image.unlock()		
 		var tex = ImageTexture.new()
 		tex.create_from_image(image)
 		
 		return tex
 		
 
-func get_mesh(mdl, xxx):
+func get_mesh(mdl):
 	
 	var vertices = Array()
 	var normals = Array()
+	var uvs = Array()
+	var onseam = Array()
 	var gd_vertices = PoolVector3Array()
 	var gd_normals = PoolVector3Array()
+	var gd_uvs = PoolVector3Array()
 		
-	# Skin
-	
-	print("skins: ",mdl.header.num_skins)
-	print("skins width: ",mdl.header.skin_width)
-	print("skins height: ",mdl.header.skin_height)
-	
+	# Skin	
 	var skin = get_skin(mdl, 0)
-
-	xxx.set_texture(skin)
+	
+	# UVs
+	var s = 0
+	var t = 0
+	var w = float(mdl.header.skin_width)
+	var h = float(mdl.header.skin_height)
+	
+	for uv in mdl.stverts:
+		onseam.push_back( uv[0] )
+		s = float(uv[1]) /w
+		t = float(uv[2]) /h
+		uvs.push_back(Vector3(s,t,0.0))
+	
 	
 	# Verticex
-	# Normals
-	
+	# Normals	
 	var scale = mdl.header.scale
 	var origin = mdl.header.origin
 	
@@ -329,7 +336,6 @@ func get_mesh(mdl, xxx):
 		normals.push_back(precalc_normals[ packed_vec[1] ] )
 	
 	# Tris
-	
 	var front = 0
 	var a = 0
 	var b = 0
@@ -337,34 +343,59 @@ func get_mesh(mdl, xxx):
 	
 	for triangle in mdl.itriangles:
 		
-		front = triangle[0]
 		
-		# FIXME: front is used for what????
-		if front == 0:
-			a = triangle[1][0]
-			b = triangle[1][1]
-			c = triangle[1][2]
-		else:
-			a = triangle[1][0]
-			b = triangle[1][1]
-			c = triangle[1][2]
+	
+		a = triangle[1][0]
+		b = triangle[1][1]
+		c = triangle[1][2]		
 			
 		gd_vertices.push_back(vertices[a])
 		gd_vertices.push_back(vertices[b])
 		gd_vertices.push_back(vertices[c])
 		gd_normals.push_back(normals[a])
 		gd_normals.push_back(normals[b])
-		gd_normals.push_back(normals[c])
-
+		gd_normals.push_back(normals[c])			
+		
+		front = triangle[0]		
+		if front == 0:
+			if onseam[a] == 0x20:
+				if uvs[a].x <= 0.5:
+					uvs[a].x += 0.5
+			if onseam[b] == 0x20:
+				if uvs[b].x <= 0.5:
+					uvs[b].x += 0.5
+			if onseam[c] == 0x20:
+				if uvs[c].x <= 0.5:
+					uvs[c].x += 0.5					
+		else:
+			if onseam[a] == 0x20:
+				if uvs[a].x >= 0.5:
+					uvs[a].x -= 0.5
+			if onseam[b] == 0x20:
+				if uvs[b].x >= 0.5:
+					uvs[b].x -= 0.5
+			if onseam[c] == 0x20:
+				if uvs[c].x >= 0.5:
+					uvs[c].x -= 0.5			
+		
+		gd_uvs.push_back(uvs[a])
+		gd_uvs.push_back(uvs[b])
+		gd_uvs.push_back(uvs[c])
+	
 			
 	var array = Array()
 	array.resize(9)
 	array[Mesh.ARRAY_VERTEX] = gd_vertices
 	array[Mesh.ARRAY_NORMAL] = gd_normals
+	array[Mesh.ARRAY_TEX_UV] = gd_uvs
 		
 	var mesh = ArrayMesh.new()
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, array)
 	
+	var mat = SpatialMaterial.new()
+	mat.set_texture(0, skin)
+	
+	mesh.surface_set_material(0, mat)
 
 	return mesh
 

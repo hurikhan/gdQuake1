@@ -38,41 +38,15 @@ func test_mdl():
 	print("\nModels loaded in: ", str(all_end-all_start), "ms")	
 
 
-func test_show_mdl(mdl):
-	var mi = $"3d/TestMesh"
-	var mesh = mi.get_mesh()
-	
-	mi.set_mesh( make_quad() )
-	
-
-func make_quad():
-	var vertices = Array()
-	vertices.push_back(Vector3(0,0,0))
-	vertices.push_back(Vector3(0,1,0))
-	vertices.push_back(Vector3(1,1,0))
-	vertices.push_back(Vector3(1,0,0))
-	
-	var array = Array()
-	array.resize(9)
-	array[Mesh.ARRAY_VERTEX] = vertices
-	
-	print(array)
-	
-	var mesh = ArrayMesh.new()
-	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_POINTS, array)
-	return mesh
-
-
-
 func _ready():
 	print("------------------------------------------------------")
 	#pak.load_pak("PAK0.PAK")
 	pallete.load_pallete()
 	#wad.load_wad("gfx.wad")
-	var m = mdl.load_mdl("progs/armor.mdl")
-	#var m = mdl.load_mdl("progs/dog.mdl")
+	#var m = mdl.load_mdl("progs/armor.mdl")
+	var m = mdl.load_mdl("progs/zombie.mdl")
 	
-	var mesh = mdl.get_mesh(m, $gui/tex)
+	var mesh = mdl.get_mesh(m)
 	var mi = $"3d/TestMesh"
 	mi.set_mesh(mesh)
 	
