@@ -1,6 +1,6 @@
 extends Node
 
-enum {T_STRING, T_U32, T_VEC3, T_F32, T_U8_ARR T_F32_ARR}
+enum {T_STRING, T_U8, T_U32, T_VEC3, T_F32, T_U8_ARR T_F32_ARR, T_U32_ARR, T_DUMMY}
 
 
 func create(name, debug_level=0):
@@ -40,6 +40,10 @@ class Parser:
 				s += char(c)
 		
 		return s
+	
+	
+	func _get_u8(data, offset):	
+		return data[offset]
 	
 	
 	func _get_u32(data, offset):
@@ -82,12 +86,27 @@ class Parser:
 		return ret
 	
 	
+	func _get_u32_arr(data, offset, length):
+		var ret = Array()		
+		for i in range(length):
+			ret.append(_get_u32(data, offset + i * 4))
+		return ret
+	
+	
+	func _get_dummy():
+		return null
+	
+	
 	func _eval_entry(data, type, offset, length):
 		match type:
 			T_STRING:
 				var v = _get_string(data, offset, length)
 				return v
-			
+				
+			T_U8:
+				var v = _get_u8(data, offset)
+				return v			
+						
 			T_U32:
 				var v = _get_u32(data, offset)
 				return v
@@ -106,10 +125,18 @@ class Parser:
 
 			T_F32_ARR:
 				var v = _get_f32_arr(data, offset, length)
-				return v	
+				return v
+
+			T_U32_ARR:
+				var v = _get_u32_arr(data, offset, length)
+				return v
+			
+			T_DUMMY:
+				var v = _get_dummy()
+				return v
 	
 	
-	func add(desc, type, offset, length=0):
+	func add(desc, type, offset=0, length=0):
 		
 		var d = Dictionary()
 		d.desc = desc
