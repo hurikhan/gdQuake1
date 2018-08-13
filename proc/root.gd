@@ -37,6 +37,7 @@ func test_mdl():
 	var all_end = OS.get_ticks_msec()	
 	print("\nModels loaded in: ", str(all_end-all_start), "ms")	
 
+
 func test_show_mdl(mdl):
 	var mi = $"3d/TestMesh"
 	var mesh = mi.get_mesh()
@@ -66,12 +67,12 @@ func make_quad():
 func _ready():
 	print("------------------------------------------------------")
 	#pak.load_pak("PAK0.PAK")
-	#pallete.load_pallete()
+	pallete.load_pallete()
 	#wad.load_wad("gfx.wad")
-	#var m = mdl.load_mdl("progs/armor.mdl")
-	var m = mdl.load_mdl("progs/player.mdl")
+	var m = mdl.load_mdl("progs/armor.mdl")
+	#var m = mdl.load_mdl("progs/dog.mdl")
 	
-	var mesh = mdl.get_mesh(m)
+	var mesh = mdl.get_mesh(m, $gui/tex)
 	var mi = $"3d/TestMesh"
 	mi.set_mesh(mesh)
 	

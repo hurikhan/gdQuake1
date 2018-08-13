@@ -272,15 +272,51 @@ func load_mdl(filename):
 	return mdl
 
 
-func get_mesh(mdl):
-	#print(mdl.header)
-	#print(mdl.frames[0])
+func get_skin(mdl, index):
+	var skin = mdl.skins[index]
+	var w = mdl.header.skin_width
+	var h = mdl.header.skin_height
+	var group = skin[0]
+	
+	if group == 0:
+		var data = skin[1]
+		
+		var image = Image.new()
+		image.create(w, h, false, Image.FORMAT_RGB8)
+		image.lock()
+		
+		for x in range(0,w):
+			for y in range(0,h):
+				image.set_pixel(x,y, pallete.color[data[x+y*w]])
+		
+		image.unlock()
+		
+		var tex = ImageTexture.new()
+		tex.create_from_image(image)
+		
+		return tex
+		
+
+func get_mesh(mdl, xxx):
 	
 	var vertices = Array()
 	var normals = Array()
 	var gd_vertices = PoolVector3Array()
 	var gd_normals = PoolVector3Array()
 		
+	# Skin
+	
+	print("skins: ",mdl.header.num_skins)
+	print("skins width: ",mdl.header.skin_width)
+	print("skins height: ",mdl.header.skin_height)
+	
+	var skin = get_skin(mdl, 0)
+
+	xxx.set_texture(skin)
+	
+	# Verticex
+	# Normals
+	
 	var scale = mdl.header.scale
 	var origin = mdl.header.origin
 	
