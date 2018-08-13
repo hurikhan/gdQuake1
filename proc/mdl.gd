@@ -269,7 +269,62 @@ func load_mdl(filename):
 	return mdl
 
 
+func get_mesh(mdl):
+	#print(mdl.header)
+	#print(mdl.frames[0])
+	
+	var vertices = Array()
+	var gd_vertices = Array()
+	
+	var size = mdl.header.scale
+	var origin = mdl.header.origin
+	
+	for packed_vec in mdl.frames[0][1][3]:
+		var x = float(packed_vec[0][0])
+		var y = float(packed_vec[0][1])
+		var z = float(packed_vec[0][2])	
+		var v = Vector3(x,y,z) * mdl.header.scale + mdl.header.origin	
+		vertices.push_back(v)
+	
+	
+	var front = 0
+	var a = 0
+	var b = 0
+	var c = 0
+	
+	for triangle in mdl.itriangles:
+		
+		front = triangle[0]
+		
+		if front == 0:
+			a = triangle[1][0]
+			b = triangle[1][1]
+			c = triangle[1][2]
+		else:
+			a = triangle[1][0]
+			b = triangle[1][1]
+			c = triangle[1][2]
+			
+		gd_vertices.push_back(vertices[a])
+		gd_vertices.push_back(vertices[b])
+		gd_vertices.push_back(vertices[c])
+		
+		
+	
+	
+	
+	
+	
 
+	var array = Array()
+	array.resize(9)
+	array[Mesh.ARRAY_VERTEX] = gd_vertices
+		
+	var mesh = ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, array)
+	return mesh
+	
+	
 	
 
 	

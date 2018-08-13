@@ -24,33 +24,60 @@ func find_file_by_ext(path, ext):
 		print("An error occurred when trying to access the path.")
 
 
-func _ready():
-	print("------------------------------------------------------")
-	#pak.load_pak("PAK0.PAK")
-	#pallete.load_pallete()
-	#wad.load_wad("gfx.wad")
-	#mdl.load_mdl("progs/armor.mdl")
-	#mdl.load_mdl("progs/backpack.mdl")
-	
-	var mdls = find_file_by_ext("user://data/progs/", ".mdl")
-	
-	
+func test_mdl():
+	var mdls = find_file_by_ext("user://data/progs/", ".mdl")	
 	var all_start = OS.get_ticks_msec()
 	
 	for i in mdls:
 		var start = OS.get_ticks_msec()
 		mdl.load_mdl("progs/" + i)
-		var end = OS.get_ticks_msec()
-		
+		var end = OS.get_ticks_msec()	
 		print(i, " loaded. ( ", str(end-start), "ms )")
 
-	var all_end = OS.get_ticks_msec()
+	var all_end = OS.get_ticks_msec()	
+	print("\nModels loaded in: ", str(all_end-all_start), "ms")	
+
+func test_show_mdl(mdl):
+	var mi = $"3d/TestMesh"
+	var mesh = mi.get_mesh()
 	
-	print("\nModels loaded in: ", str(all_end-all_start), "ms")
+	mi.set_mesh( make_quad() )
 	
-	#var zombie = mdl.load_mdl("progs/zombie.mdl")
+
+func make_quad():
+	var vertices = Array()
+	vertices.push_back(Vector3(0,0,0))
+	vertices.push_back(Vector3(0,1,0))
+	vertices.push_back(Vector3(1,1,0))
+	vertices.push_back(Vector3(1,0,0))
+	
+	var array = Array()
+	array.resize(9)
+	array[Mesh.ARRAY_VERTEX] = vertices
+	
+	print(array)
+	
+	var mesh = ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_POINTS, array)
+	return mesh
+
+
+
+func _ready():
+	print("------------------------------------------------------")
+	#pak.load_pak("PAK0.PAK")
+	#pallete.load_pallete()
+	#wad.load_wad("gfx.wad")
+	var m = mdl.load_mdl("progs/armor.mdl")
+	#var m = mdl.load_mdl("progs/zombie.mdl")
+	
+	var mesh = mdl.get_mesh(m)
+	var mi = $"3d/TestMesh"
+	mi.set_mesh(mesh)
+	
+	#test_show_mdl(m)
 
 	
 
-	
-	get_tree().quit()
+
+	#get_tree().quit()
