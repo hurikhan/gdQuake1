@@ -68,8 +68,8 @@ func _ready():
 	#pak.load_pak("PAK0.PAK")
 	#pallete.load_pallete()
 	#wad.load_wad("gfx.wad")
-	var m = mdl.load_mdl("progs/armor.mdl")
-	#var m = mdl.load_mdl("progs/zombie.mdl")
+	#var m = mdl.load_mdl("progs/armor.mdl")
+	var m = mdl.load_mdl("progs/player.mdl")
 	
 	var mesh = mdl.get_mesh(m)
 	var mi = $"3d/TestMesh"

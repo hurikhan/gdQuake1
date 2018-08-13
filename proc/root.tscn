@@ -94,7 +94,7 @@ _sections_unfolded = [ "Spot" ]
 
 [node name="TestMesh" type="MeshInstance" parent="3d" index="2"]
 
-transform = Transform( 0.1, 0, 0, 0, -4.37114e-09, 0.1, 0, -0.1, -4.37114e-09, 0, -2.02009, -7.52489 )
+transform = Transform( 1, 0, 0, 0, -4.37114e-08, 1, 0, -1, -4.37114e-08, 0, -2.9158, -56.4592 )
 layers = 1
 material_override = null
 cast_shadow = 1

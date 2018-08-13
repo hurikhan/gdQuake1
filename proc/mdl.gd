@@ -1,5 +1,8 @@
 extends Node
 
+var precalc_normals = Array()
+
+
 func load_mdl(filename):
 	
 	var mdl = Dictionary()
@@ -274,18 +277,22 @@ func get_mesh(mdl):
 	#print(mdl.frames[0])
 	
 	var vertices = Array()
-	var gd_vertices = Array()
-	
-	var size = mdl.header.scale
+	var normals = Array()
+	var gd_vertices = PoolVector3Array()
+	var gd_normals = PoolVector3Array()
+		
+	var scale = mdl.header.scale
 	var origin = mdl.header.origin
 	
 	for packed_vec in mdl.frames[0][1][3]:
 		var x = float(packed_vec[0][0])
 		var y = float(packed_vec[0][1])
 		var z = float(packed_vec[0][2])	
-		var v = Vector3(x,y,z) * mdl.header.scale + mdl.header.origin	
+		var v = Vector3(x,y,z) * scale + origin	
 		vertices.push_back(v)
+		normals.push_back(precalc_normals[ packed_vec[1] ] )
 	
+	# Tris
 	
 	var front = 0
 	var a = 0
@@ -296,6 +303,7 @@ func get_mesh(mdl):
 		
 		front = triangle[0]
 		
+		# FIXME: front is used for what????
 		if front == 0:
 			a = triangle[1][0]
 			b = triangle[1][1]
@@ -308,23 +316,191 @@ func get_mesh(mdl):
 		gd_vertices.push_back(vertices[a])
 		gd_vertices.push_back(vertices[b])
 		gd_vertices.push_back(vertices[c])
-		
-		
-	
-	
-	
-	
-	
+		gd_normals.push_back(normals[a])
+		gd_normals.push_back(normals[b])
+		gd_normals.push_back(normals[c])
 
+			
 	var array = Array()
 	array.resize(9)
 	array[Mesh.ARRAY_VERTEX] = gd_vertices
+	array[Mesh.ARRAY_NORMAL] = gd_normals
 		
 	var mesh = ArrayMesh.new()
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, array)
-	return mesh
-	
-	
 	
 
+	return mesh
+
+
+func _ready():
+	init_precalc_normals()
+
+	
+func init_precalc_normals():
+	precalc_normals.push_back(Vector3(-0.525731, 0.000000, 0.850651))
+	precalc_normals.push_back(Vector3(-0.442863, 0.238856, 0.864188))
+	precalc_normals.push_back(Vector3(-0.295242, 0.000000, 0.955423))
+	precalc_normals.push_back(Vector3(-0.309017, 0.500000, 0.809017))
+	precalc_normals.push_back(Vector3(-0.162460, 0.262866, 0.951056))
+	precalc_normals.push_back(Vector3(0.000000, 0.000000, 1.000000))
+	precalc_normals.push_back(Vector3(0.000000, 0.850651, 0.525731))
+	precalc_normals.push_back(Vector3(-0.147621, 0.716567, 0.681718))
+	precalc_normals.push_back(Vector3(0.147621, 0.716567, 0.681718))
+	precalc_normals.push_back(Vector3(0.000000, 0.525731, 0.850651))
+	precalc_normals.push_back(Vector3(0.309017, 0.500000, 0.809017))
+	precalc_normals.push_back(Vector3(0.525731, 0.000000, 0.850651))
+	precalc_normals.push_back(Vector3(0.295242, 0.000000, 0.955423))
+	precalc_normals.push_back(Vector3(0.442863, 0.238856, 0.864188))
+	precalc_normals.push_back(Vector3(0.162460, 0.262866, 0.951056))
+	precalc_normals.push_back(Vector3(-0.681718, 0.147621, 0.716567))
+	precalc_normals.push_back(Vector3(-0.809017, 0.309017, 0.500000))
+	precalc_normals.push_back(Vector3(-0.587785, 0.425325, 0.688191))
+	precalc_normals.push_back(Vector3(-0.850651, 0.525731, 0.000000))
+	precalc_normals.push_back(Vector3(-0.864188, 0.442863, 0.238856))
+	precalc_normals.push_back(Vector3(-0.716567, 0.681718, 0.147621))
+	precalc_normals.push_back(Vector3(-0.688191, 0.587785, 0.425325))
+	precalc_normals.push_back(Vector3(-0.500000, 0.809017, 0.309017))
+	precalc_normals.push_back(Vector3(-0.238856, 0.864188, 0.442863))
+	precalc_normals.push_back(Vector3(-0.425325, 0.688191, 0.587785))
+	precalc_normals.push_back(Vector3(-0.716567, 0.681718, -0.147621))
+	precalc_normals.push_back(Vector3(-0.500000, 0.809017, -0.309017))
+	precalc_normals.push_back(Vector3(-0.525731, 0.850651, 0.000000))
+	precalc_normals.push_back(Vector3(0.000000, 0.850651, -0.525731))
+	precalc_normals.push_back(Vector3(-0.238856, 0.864188, -0.442863))
+	precalc_normals.push_back(Vector3(0.000000, 0.955423, -0.295242))
+	precalc_normals.push_back(Vector3(-0.262866, 0.951056, -0.162460))
+	precalc_normals.push_back(Vector3(0.000000, 1.000000, 0.000000))
+	precalc_normals.push_back(Vector3(0.000000, 0.955423, 0.295242))
+	precalc_normals.push_back(Vector3(-0.262866, 0.951056, 0.162460))
+	precalc_normals.push_back(Vector3(0.238856, 0.864188, 0.442863))
+	precalc_normals.push_back(Vector3(0.262866, 0.951056, 0.162460))
+	precalc_normals.push_back(Vector3(0.500000, 0.809017, 0.309017))
+	precalc_normals.push_back(Vector3(0.238856, 0.864188, -0.442863))
+	precalc_normals.push_back(Vector3(0.262866, 0.951056, -0.162460))
+	precalc_normals.push_back(Vector3(0.500000, 0.809017, -0.309017))
+	precalc_normals.push_back(Vector3(0.850651, 0.525731, 0.000000))
+	precalc_normals.push_back(Vector3(0.716567, 0.681718, 0.147621))
+	precalc_normals.push_back(Vector3(0.716567, 0.681718, -0.147621))
+	precalc_normals.push_back(Vector3(0.525731, 0.850651, 0.000000))
+	precalc_normals.push_back(Vector3(0.425325, 0.688191, 0.587785))
+	precalc_normals.push_back(Vector3(0.864188, 0.442863, 0.238856))
+	precalc_normals.push_back(Vector3(0.688191, 0.587785, 0.425325))
+	precalc_normals.push_back(Vector3(0.809017, 0.309017, 0.500000))
+	precalc_normals.push_back(Vector3(0.681718, 0.147621, 0.716567))
+	precalc_normals.push_back(Vector3(0.587785, 0.425325, 0.688191))
+	precalc_normals.push_back(Vector3(0.955423, 0.295242, 0.000000))
+	precalc_normals.push_back(Vector3(1.000000, 0.000000, 0.000000))
+	precalc_normals.push_back(Vector3(0.951056, 0.162460, 0.262866))
+	precalc_normals.push_back(Vector3(0.850651, -0.525731, 0.000000))
+	precalc_normals.push_back(Vector3(0.955423, -0.295242, 0.000000))
+	precalc_normals.push_back(Vector3(0.864188, -0.442863, 0.238856))
+	precalc_normals.push_back(Vector3(0.951056, -0.162460, 0.262866))
+	precalc_normals.push_back(Vector3(0.809017, -0.309017, 0.500000))
+	precalc_normals.push_back(Vector3(0.681718, -0.147621, 0.716567))
+	precalc_normals.push_back(Vector3(0.850651, 0.000000, 0.525731))
+	precalc_normals.push_back(Vector3(0.864188, 0.442863, -0.238856))
+	precalc_normals.push_back(Vector3(0.809017, 0.309017, -0.500000))
+	precalc_normals.push_back(Vector3(0.951056, 0.162460, -0.262866))
+	precalc_normals.push_back(Vector3(0.525731, 0.000000, -0.850651))
+	precalc_normals.push_back(Vector3(0.681718, 0.147621, -0.716567))
+	precalc_normals.push_back(Vector3(0.681718, -0.147621, -0.716567))
+	precalc_normals.push_back(Vector3(0.850651, 0.000000, -0.525731))
+	precalc_normals.push_back(Vector3(0.809017, -0.309017, -0.500000))
+	precalc_normals.push_back(Vector3(0.864188, -0.442863, -0.238856))
+	precalc_normals.push_back(Vector3(0.951056, -0.162460, -0.262866))
+	precalc_normals.push_back(Vector3(0.147621, 0.716567, -0.681718))
+	precalc_normals.push_back(Vector3(0.309017, 0.500000, -0.809017))
+	precalc_normals.push_back(Vector3(0.425325, 0.688191, -0.587785))
+	precalc_normals.push_back(Vector3(0.442863, 0.238856, -0.864188))
+	precalc_normals.push_back(Vector3(0.587785, 0.425325, -0.688191))
+	precalc_normals.push_back(Vector3(0.688191, 0.587785, -0.425325))
+	precalc_normals.push_back(Vector3(-0.147621, 0.716567, -0.681718))
+	precalc_normals.push_back(Vector3(-0.309017, 0.500000, -0.809017))
+	precalc_normals.push_back(Vector3(0.000000, 0.525731, -0.850651))
+	precalc_normals.push_back(Vector3(-0.525731, 0.000000, -0.850651))
+	precalc_normals.push_back(Vector3(-0.442863, 0.238856, -0.864188))
+	precalc_normals.push_back(Vector3(-0.295242, 0.000000, -0.955423))
+	precalc_normals.push_back(Vector3(-0.162460, 0.262866, -0.951056))
+	precalc_normals.push_back(Vector3(0.000000, 0.000000, -1.000000))
+	precalc_normals.push_back(Vector3(0.295242, 0.000000, -0.955423))
+	precalc_normals.push_back(Vector3(0.162460, 0.262866, -0.951056))
+	precalc_normals.push_back(Vector3(-0.442863, -0.238856, -0.864188))
+	precalc_normals.push_back(Vector3(-0.309017, -0.500000, -0.809017))
+	precalc_normals.push_back(Vector3(-0.162460, -0.262866, -0.951056))
+	precalc_normals.push_back(Vector3(0.000000, -0.850651, -0.525731))
+	precalc_normals.push_back(Vector3(-0.147621, -0.716567, -0.681718))
+	precalc_normals.push_back(Vector3(0.147621, -0.716567, -0.681718))
+	precalc_normals.push_back(Vector3(0.000000, -0.525731, -0.850651))
+	precalc_normals.push_back(Vector3(0.309017, -0.500000, -0.809017))
+	precalc_normals.push_back(Vector3(0.442863, -0.238856, -0.864188))
+	precalc_normals.push_back(Vector3(0.162460, -0.262866, -0.951056))
+	precalc_normals.push_back(Vector3(0.238856, -0.864188, -0.442863))
+	precalc_normals.push_back(Vector3(0.500000, -0.809017, -0.309017))
+	precalc_normals.push_back(Vector3(0.425325, -0.688191, -0.587785))
+	precalc_normals.push_back(Vector3(0.716567, -0.681718, -0.147621))
+	precalc_normals.push_back(Vector3(0.688191, -0.587785, -0.425325))
+	precalc_normals.push_back(Vector3(0.587785, -0.425325, -0.688191))
+	precalc_normals.push_back(Vector3(0.000000, -0.955423, -0.295242))
+	precalc_normals.push_back(Vector3(0.000000, -1.000000, 0.000000))
+	precalc_normals.push_back(Vector3(0.262866, -0.951056, -0.162460))
+	precalc_normals.push_back(Vector3(0.000000, -0.850651, 0.525731))
+	precalc_normals.push_back(Vector3(0.000000, -0.955423, 0.295242))
+	precalc_normals.push_back(Vector3(0.238856, -0.864188, 0.442863))
+	precalc_normals.push_back(Vector3(0.262866, -0.951056, 0.162460))
+	precalc_normals.push_back(Vector3(0.500000, -0.809017, 0.309017))
+	precalc_normals.push_back(Vector3(0.716567, -0.681718, 0.147621))
+	precalc_normals.push_back(Vector3(0.525731, -0.850651, 0.000000))
+	precalc_normals.push_back(Vector3(-0.238856, -0.864188, -0.442863))
+	precalc_normals.push_back(Vector3(-0.500000, -0.809017, -0.309017))
+	precalc_normals.push_back(Vector3(-0.262866, -0.951056, -0.162460))
+	precalc_normals.push_back(Vector3(-0.850651, -0.525731, 0.000000))
+	precalc_normals.push_back(Vector3(-0.716567, -0.681718, -0.147621))
+	precalc_normals.push_back(Vector3(-0.716567, -0.681718, 0.147621))
+	precalc_normals.push_back(Vector3(-0.525731, -0.850651, 0.000000))
+	precalc_normals.push_back(Vector3(-0.500000, -0.809017, 0.309017))
+	precalc_normals.push_back(Vector3(-0.238856, -0.864188, 0.442863))
+	precalc_normals.push_back(Vector3(-0.262866, -0.951056, 0.162460))
+	precalc_normals.push_back(Vector3(-0.864188, -0.442863, 0.238856))
+	precalc_normals.push_back(Vector3(-0.809017, -0.309017, 0.500000))
+	precalc_normals.push_back(Vector3(-0.688191, -0.587785, 0.425325))
+	precalc_normals.push_back(Vector3(-0.681718, -0.147621, 0.716567))
+	precalc_normals.push_back(Vector3(-0.442863, -0.238856, 0.864188))
+	precalc_normals.push_back(Vector3(-0.587785, -0.425325, 0.688191))
+	precalc_normals.push_back(Vector3(-0.309017, -0.500000, 0.809017))
+	precalc_normals.push_back(Vector3(-0.147621, -0.716567, 0.681718))
+	precalc_normals.push_back(Vector3(-0.425325, -0.688191, 0.587785))
+	precalc_normals.push_back(Vector3(-0.162460, -0.262866, 0.951056))
+	precalc_normals.push_back(Vector3(0.442863, -0.238856, 0.864188))
+	precalc_normals.push_back(Vector3(0.162460, -0.262866, 0.951056))
+	precalc_normals.push_back(Vector3(0.309017, -0.500000, 0.809017))
+	precalc_normals.push_back(Vector3(0.147621, -0.716567, 0.681718))
+	precalc_normals.push_back(Vector3(0.000000, -0.525731, 0.850651))
+	precalc_normals.push_back(Vector3(0.425325, -0.688191, 0.587785))
+	precalc_normals.push_back(Vector3(0.587785, -0.425325, 0.688191))
+	precalc_normals.push_back(Vector3(0.688191, -0.587785, 0.425325))
+	precalc_normals.push_back(Vector3(-0.955423, 0.295242, 0.000000))
+	precalc_normals.push_back(Vector3(-0.951056, 0.162460, 0.262866))
+	precalc_normals.push_back(Vector3(-1.000000, 0.000000, 0.000000))
+	precalc_normals.push_back(Vector3(-0.850651, 0.000000, 0.525731))
+	precalc_normals.push_back(Vector3(-0.955423, -0.295242, 0.000000))
+	precalc_normals.push_back(Vector3(-0.951056, -0.162460, 0.262866))
+	precalc_normals.push_back(Vector3(-0.864188, 0.442863, -0.238856))
+	precalc_normals.push_back(Vector3(-0.951056, 0.162460, -0.262866))
+	precalc_normals.push_back(Vector3(-0.809017, 0.309017, -0.500000))
+	precalc_normals.push_back(Vector3(-0.864188, -0.442863, -0.238856))
+	precalc_normals.push_back(Vector3(-0.951056, -0.162460, -0.262866))
+	precalc_normals.push_back(Vector3(-0.809017, -0.309017, -0.500000))
+	precalc_normals.push_back(Vector3(-0.681718, 0.147621, -0.716567))
+	precalc_normals.push_back(Vector3(-0.681718, -0.147621, -0.716567))
+	precalc_normals.push_back(Vector3(-0.850651, 0.000000, -0.525731))
+	precalc_normals.push_back(Vector3(-0.688191, 0.587785, -0.425325))
+	precalc_normals.push_back(Vector3(-0.587785, 0.425325, -0.688191))
+	precalc_normals.push_back(Vector3(-0.425325, 0.688191, -0.587785))
+	precalc_normals.push_back(Vector3(-0.425325, -0.688191, -0.587785))
+	precalc_normals.push_back(Vector3(-0.587785, -0.425325, -0.688191))
+	precalc_normals.push_back(Vector3(-0.688191, -0.587785, -0.425325))
+
+	
+	print(precalc_normals.size(), " precalculated vertex normals loaded.")
 	
