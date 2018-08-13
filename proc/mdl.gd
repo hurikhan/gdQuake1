@@ -293,7 +293,34 @@ func get_skin(mdl, index):
 		var tex = ImageTexture.new()
 		tex.create_from_image(image)
 		
-		return tex
+		return tex		
+	else:
+		var groupskin = Dictionary()	
+		groupskin.type = "groupskin"
+		groupskin.nb = skin[1]
+		groupskin.times = skin[2]
+		
+		var texs = Array()
+		
+		for i in range(0,groupskin.nb):
+			var data = skin[3][i]
+			
+			var image = Image.new()
+			image.create(w, h, false, Image.FORMAT_RGB8)
+			image.lock()
+			
+			for x in range(0,w):
+				for y in range(0,h):
+					image.set_pixel(x,y, pallete.color[data[x+y*w]])
+			
+			image.unlock()		
+			var tex = ImageTexture.new()
+			tex.create_from_image(image)
+			texs.push_back(tex)
+		
+		groupskin.texs = texs
+		return groupskin
+		
 		
 
 func get_mesh(mdl):
@@ -326,14 +353,21 @@ func get_mesh(mdl):
 	# Normals	
 	var scale = mdl.header.scale
 	var origin = mdl.header.origin
+	var packed_vecs = null
 	
-	for packed_vec in mdl.frames[0][1][3]:
+	if mdl.frames[0][0] == 0:
+		packed_vecs = mdl.frames[0][1][3]
+	else:
+		packed_vecs = mdl.frames[0][5][0][3]
+		
+	for packed_vec in packed_vecs:
 		var x = float(packed_vec[0][0])
 		var y = float(packed_vec[0][1])
 		var z = float(packed_vec[0][2])	
 		var v = Vector3(x,y,z) * scale + origin	
 		vertices.push_back(v)
 		normals.push_back(precalc_normals[ packed_vec[1] ] )
+		
 	
 	# Tris
 	var front = 0
@@ -343,8 +377,6 @@ func get_mesh(mdl):
 	
 	for triangle in mdl.itriangles:
 		
-		
-	
 		a = triangle[1][0]
 		b = triangle[1][1]
 		c = triangle[1][2]		

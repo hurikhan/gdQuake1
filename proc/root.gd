@@ -1,5 +1,8 @@
 extends Node
 
+var test2_mdls = null
+var test2_index = 0
+
 
 func find_file_by_ext(path, ext):
 	var dir = Directory.new()
@@ -38,21 +41,43 @@ func test_mdl():
 	print("\nModels loaded in: ", str(all_end-all_start), "ms")	
 
 
+func test_mdl2(filename):
+	var m = mdl.load_mdl("progs/" + filename)	
+	var mi = $"3d/TestMesh"
+	mi.set_mesh(mdl.get_mesh(m))
+
+
+
+
 func _ready():
 	print("------------------------------------------------------")
 	#pak.load_pak("PAK0.PAK")
 	pallete.load_pallete()
 	#wad.load_wad("gfx.wad")
 	#var m = mdl.load_mdl("progs/armor.mdl")
-	var m = mdl.load_mdl("progs/zombie.mdl")
+	#var m = mdl.load_mdl("progs/zombie.mdl")
+	#var m = mdl.load_mdl("progs/dog.mdl")
 	
-	var mesh = mdl.get_mesh(m)
-	var mi = $"3d/TestMesh"
-	mi.set_mesh(mesh)
+	#var mesh = mdl.get_mesh(m)
+	#var mi = $"3d/TestMesh"
+	#mi.set_mesh(mesh)
 	
-	#test_show_mdl(m)
+	
+	test2_mdls = find_file_by_ext("user://data/progs/", ".mdl")
+	test2_index = 0
 
 	
 
 
 	#get_tree().quit()
+
+func _on_Timer_timeout():
+	if test2_index >= test2_mdls.size():
+		test2_index = 0
+		
+	test_mdl2(test2_mdls[test2_index])
+	print(test2_mdls[test2_index])
+	
+	test2_index += 1
+	
+	$Timer.start()
