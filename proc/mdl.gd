@@ -46,28 +46,28 @@ func load_mdl(filename):
 	
 	var skin_t = parser.create("skin_t")
 	skin_t.add("group",		parser.T_U32,		0				)
-	skin_t.add("skin",		parser.T_U8_ARR,	4,	skin_size	)
+	skin_t.add("raw_tex",	parser.T_U8_ARR,	4,	skin_size	)
 
 	for i in range(0, mdl.header.num_skins):		
 		var group = parser.get_u32(data, offset)
 		
 		match group:
 			0:
-				#print(i, " -- singleskin")			
-				skins.append( skin_t.eval_as_array(data, offset) )			
+				skins.append( skin_t.eval_as_dict(data, offset) )			
 				offset = offset + 4 + skin_size
 			
 			_:
-				print(i, " -- groupskin -- untested!!!")
 				var nb = parser.get_u32(data, offset + 4)
 				var skingroup_t  = parser.create("skin_group")
 				skingroup_t.add("group",	parser.T_U32,		0							)
 				skingroup_t.add("nb",		parser.T_U32,		4							)
-				skingroup_t.add("time",		parser.T_F32_ARR,	8,			nb				)
-				skingroup_t.add("skin",		parser.T_U8_ARR,	8 + nb*4,	[nb,skin_size]	)
-				skins.append( skingroup_t.eval_as_array(data, offset) )
+				skingroup_t.add("times",	parser.T_F32_ARR,	8,			nb				)
+				skingroup_t.add("raw_texs",	parser.T_U8_ARR,	8 + nb*4,	[nb,skin_size]	)
+				skins.append( skingroup_t.eval_as_dict(data, offset) )
 				
 				offset = offset + 8 + nb * 4 + nb * skin_size
+
+				
 
 	mdl.skins = skins
 	
@@ -83,7 +83,7 @@ func load_mdl(filename):
 	stvert_t.add("t",			parser.T_U32,	8		)
 	
 	for i in range(0, mdl.header.num_verts):
-		stverts.append( stvert_t.eval_as_array(data, offset) )
+		stverts.append( stvert_t.eval_as_dict(data, offset) )
 		offset = offset + 12
 	
 	mdl.stverts = stverts
@@ -99,7 +99,7 @@ func load_mdl(filename):
 	itriangle_t.add("vertices",		parser.T_U32_ARR,	4,	3	)
 	
 	for i in range(0, mdl.header.num_tris):
-		itriangles.append( itriangle_t.eval_as_array(data, offset) )
+		itriangles.append( itriangle_t.eval_as_dict(data, offset) )
 		offset = offset + 16	
 	
 	mdl.itriangles = itriangles
@@ -126,7 +126,7 @@ func load_mdl(filename):
 			# ---------------------------------------------------
 
 			var frame_type_single_t = parser.create("frame_type_single")
-			frame_type_single_t.add("type",		parser.T_U32,		0	)	# Value = 0
+			frame_type_single_t.add("group",	parser.T_U32,		0	)	# Value = 0
 			frame_type_single_t.add("frame",	parser.T_DUMMY,		4	)	# a single frame definition (simpleframe_t)
 		
 		
@@ -145,34 +145,34 @@ func load_mdl(filename):
 			# ---------------------------------------------------	
 			
 			var trivertx_t = parser.create("trivertx_t")
-			trivertx_t.add("packedposition",	parser.T_U8_ARR,	0,	3	)	# X,Y,Z coordinate, packed on 0-255
+			trivertx_t.add("packedpositions",	parser.T_U8_ARR,	0,	3	)	# X,Y,Z coordinate, packed on 0-255
 			trivertx_t.add("lightnormalindex",	parser.T_U8,		3		)	# index of the vertex normal
 
 			# ---------------------------------------------------
 			# logic -- single frame
 			# ---------------------------------------------------	
 
-			var frame_type_single = frame_type_single_t.eval_as_array(data, offset)
+			var frame_type_single = frame_type_single_t.eval_as_dict(data, offset)
 			offset += 4
 			
-			var simpleframe = simpleframe_t.eval_as_array(data, offset)
+			var simpleframe = simpleframe_t.eval_as_dict(data, offset)
 							
-			var bbox_min = trivertx_t.eval_as_array(data, offset)
+			var bbox_min = trivertx_t.eval_as_dict(data, offset)
 			offset += 4
 			
-			var bbox_max = trivertx_t.eval_as_array(data, offset)
+			var bbox_max = trivertx_t.eval_as_dict(data, offset)
 			offset += 4 + 16 # +16 name[16]
 					
 			var vertices = Array()
 			for k in range(0, mdl.header.num_verts):
-				vertices.append( trivertx_t.eval_as_array(data, offset) )
+				vertices.append( trivertx_t.eval_as_dict(data, offset) )
 				offset += 4
 							
-			simpleframe[0] = bbox_min
-			simpleframe[1] = bbox_max
-			simpleframe[3] = vertices
+			simpleframe.min = bbox_min
+			simpleframe.max = bbox_max
+			simpleframe.vertices = vertices
 			
-			frame_type_single[1] = simpleframe
+			frame_type_single.frame = simpleframe
 			
 			frames.append( frame_type_single )
 				
@@ -187,7 +187,7 @@ func load_mdl(filename):
 			# ---------------------------------------------------
 					
 			var frame_type_group_t = parser.create("frame_type_group")
-			frame_type_group_t.add("type",		parser.T_U32,		0							)	# Value != 0
+			frame_type_group_t.add("group",		parser.T_U32,		0							)	# Value != 0
 			frame_type_group_t.add("nb",		parser.T_U32,		4							)	# Number of frames
 			frame_type_group_t.add("min",		parser.T_DUMMY,		8,	4						)	# min position in all simple frames (trivertx_t)
 			frame_type_group_t.add("max",		parser.T_DUMMY,		12,	4						)	# max position in all simple frames
@@ -210,21 +210,21 @@ func load_mdl(filename):
 			# ---------------------------------------------------	
 			
 			var trivertx_t = parser.create("trivertx_t")
-			trivertx_t.add("packedposition",	parser.T_U8_ARR,	0,	3	)	# X,Y,Z coordinate, packed on 0-255
+			trivertx_t.add("packedpositions",	parser.T_U8_ARR,	0,	3	)	# X,Y,Z coordinate, packed on 0-255
 			trivertx_t.add("lightnormalindex",	parser.T_U8,		3		)	# index of the vertex normal
 
 			# ---------------------------------------------------
 			# logic -- group frame
 			# ---------------------------------------------------				
 
-			var frame_type_group = frame_type_group_t.eval_as_array(data, offset)
-			var number_of_frames = frame_type_group[1]
+			var frame_type_group = frame_type_group_t.eval_as_dict(data, offset)
+			var number_of_frames = frame_type_group.nb
 			offset += 8
 
-			var group_bbox_min = trivertx_t.eval_as_array(data, offset)
+			var group_bbox_min = trivertx_t.eval_as_dict(data, offset)
 			offset += 4
 			
-			var group_bbox_max = trivertx_t.eval_as_array(data, offset)
+			var group_bbox_max = trivertx_t.eval_as_dict(data, offset)
 			offset += 4
 			
 			# Times[nb]
@@ -240,30 +240,30 @@ func load_mdl(filename):
 			
 			for k in range(0, number_of_frames):
 			
-				var simpleframe = simpleframe_t.eval_as_array(data, offset)
+				var simpleframe = simpleframe_t.eval_as_dict(data, offset)
 								
-				var bbox_min = trivertx_t.eval_as_array(data, offset)
+				var bbox_min = trivertx_t.eval_as_dict(data, offset)
 				offset += 4
 				
-				var bbox_max = trivertx_t.eval_as_array(data, offset)
+				var bbox_max = trivertx_t.eval_as_dict(data, offset)
 				offset += 4 + 16 # +16 name[16]
 						
 				var vertices = Array()
 				for j in range(0, mdl.header.num_verts):
-					vertices.append( trivertx_t.eval_as_array(data, offset) )
+					vertices.append( trivertx_t.eval_as_dict(data, offset) )
 					offset += 4
 								
-				simpleframe[0] = bbox_min
-				simpleframe[1] = bbox_max
-				simpleframe[3] = vertices
+				simpleframe.min = bbox_min
+				simpleframe.max = bbox_max
+				simpleframe.vertices = vertices
 				
 				simpleframes.append(simpleframe)
 			
 			# reassemble
-			frame_type_group[2] = group_bbox_min
-			frame_type_group[3] = group_bbox_max
-			frame_type_group[4] = times
-			frame_type_group[5] = simpleframes
+			frame_type_group.min = group_bbox_min
+			frame_type_group.max = group_bbox_max
+			frame_type_group.times = times
+			frame_type_group.frames = simpleframes
 					
 			frames.append( frame_type_group )
 			
@@ -276,10 +276,10 @@ func get_skin(mdl, index):
 	var skin = mdl.skins[index]
 	var w = mdl.header.skin_width
 	var h = mdl.header.skin_height
-	var group = skin[0]
+	var group = skin.group
 	
 	if group == 0:
-		var data = skin[1]
+		var data = skin.raw_tex
 		
 		var image = Image.new()
 		image.create(w, h, false, Image.FORMAT_RGB8)
@@ -297,13 +297,13 @@ func get_skin(mdl, index):
 	else:
 		var groupskin = Dictionary()	
 		groupskin.type = "groupskin"
-		groupskin.nb = skin[1]
-		groupskin.times = skin[2]
+		groupskin.nb = skin.nb
+		groupskin.times = skin.times
 		
 		var texs = Array()
 		
 		for i in range(0,groupskin.nb):
-			var data = skin[3][i]
+			var data = skin.raw_texs[i]
 			
 			var image = Image.new()
 			image.create(w, h, false, Image.FORMAT_RGB8)
@@ -343,9 +343,9 @@ func get_mesh(mdl):
 	var h = float(mdl.header.skin_height)
 	
 	for uv in mdl.stverts:
-		onseam.push_back( uv[0] )
-		s = float(uv[1]) /w
-		t = float(uv[2]) /h
+		onseam.push_back( uv.onseam )
+		s = float( uv.s ) /w
+		t = float( uv.t ) /h
 		uvs.push_back(Vector3(s,t,0.0))
 	
 	
@@ -353,33 +353,32 @@ func get_mesh(mdl):
 	# Normals	
 	var scale = mdl.header.scale
 	var origin = mdl.header.origin
-	var packed_vecs = null
+	var raw_vecs = null
 	
-	if mdl.frames[0][0] == 0:
-		packed_vecs = mdl.frames[0][1][3]
+	if mdl.frames[0].group == 0:
+		raw_vecs = mdl.frames[0].frame.vertices
 	else:
-		packed_vecs = mdl.frames[0][5][0][3]
+		raw_vecs = mdl.frames[0].frames[0].vertices
 		
-	for packed_vec in packed_vecs:
-		var x = float(packed_vec[0][0])
-		var y = float(packed_vec[0][1])
-		var z = float(packed_vec[0][2])	
+	for raw_vec in raw_vecs:
+		var x = float(raw_vec.packedpositions[0])
+		var y = float(raw_vec.packedpositions[1])
+		var z = float(raw_vec.packedpositions[2])	
 		var v = Vector3(x,y,z) * scale + origin	
 		vertices.push_back(v)
-		normals.push_back(precalc_normals[ packed_vec[1] ] )
+		normals.push_back(precalc_normals[ raw_vec.lightnormalindex ] )
 		
 	
 	# Tris
-	var front = 0
 	var a = 0
 	var b = 0
 	var c = 0
 	
 	for triangle in mdl.itriangles:
 		
-		a = triangle[1][0]
-		b = triangle[1][1]
-		c = triangle[1][2]		
+		a = triangle.vertices[0]
+		b = triangle.vertices[1]
+		c = triangle.vertices[2]		
 			
 		gd_vertices.push_back(vertices[a])
 		gd_vertices.push_back(vertices[b])
@@ -388,8 +387,7 @@ func get_mesh(mdl):
 		gd_normals.push_back(normals[b])
 		gd_normals.push_back(normals[c])			
 		
-		front = triangle[0]		
-		if front == 0:
+		if triangle.facesfront == 0:
 			if onseam[a] == 0x20:
 				if uvs[a].x <= 0.5:
 					uvs[a].x += 0.5

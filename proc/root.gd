@@ -45,6 +45,8 @@ func test_mdl2(filename):
 	var m = mdl.load_mdl("progs/" + filename)	
 	var mi = $"3d/TestMesh"
 	mi.set_mesh(mdl.get_mesh(m))
+	
+	$gui/Label.set_text(filename)
 
 
 
