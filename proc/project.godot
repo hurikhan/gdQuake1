@@ -9,6 +9,7 @@
 config_version=3
 
 _global_script_classes=null
+_global_script_class_icons=null
 
 [application]
 
@@ -29,6 +30,10 @@ parser="*res://parser.gd"
 [debug]
 
 settings/stdout/verbose_stdout=true
+
+[display]
+
+window/vsync/use_vsync=false
 
 [gdnative]
 

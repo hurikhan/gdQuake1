@@ -1,9 +1,104 @@
 extends Node
 
+var models = Dictionary()
+
 var precalc_normals = Array()
 
 
+class Model:
+	
+	var name = ""
+	var frames = Dictionary()
+	var skins = Array()
+	
+	var current_node = null
+	var current_frame = ""
+	var current_skin = 0
+
+
+	func set_node(node):
+		self.current_node = node
+		
+
+	func set_frame(name):
+		self.current_frame = name
+		self.current_node.set_mesh(self.frames[name].frame.vertices)
+	
+
+	func set_skin(index, groupindex=0):
+		# Create material
+		#	var mat = SpatialMaterial.new()
+		#	mat.set_texture(0, skin)
+		#
+		#	mesh.surface_set_material(0, mat)
+		
+		if skins[index].group == 0:
+			var mat = SpatialMaterial.new()
+			mat.set_texture(0, skins[index].tex)
+			var mesh = self.current_node.get_mesh()
+			mesh.surface_set_material(0, mat)
+						 
+
+
 func load_mdl(filename):
+	
+	var model = Model.new()	
+	var parsed_mdl = _parse_file(filename)
+	
+	# ---------------------------------------------------
+	# frames
+	# ---------------------------------------------------	
+	for i in range(0, parsed_mdl.frames.size()):
+
+		var frame = parsed_mdl.frames[i]
+		
+		# single frames
+		if frame.group == 0:
+			print(filename, " -- frame -- ", i)
+			var mesh = _get_mesh(parsed_mdl, i)
+			frame.frame.vertices = mesh
+			
+					
+		# group frames	
+		else:
+			var meshes = Array()
+			for k in range(0, frame.frames.size()):
+				print(filename, " -- framegroup -- ", i, " -- ", k)
+				var mesh = _get_mesh(parsed_mdl, i, k)
+				frame.frames[k].vertices = mesh
+				
+		model.frames[frame.frame.name] = frame
+		
+		
+				
+	# ---------------------------------------------------
+	# skins
+	# ---------------------------------------------------	
+	for i in range(0, parsed_mdl.skins.size()):
+		
+		var skins = parsed_mdl.skins
+		
+		# single skin	
+		if parsed_mdl.skins[i].group == 0:
+			print(filename, " -- single skin -- ", i)
+			var tex = _get_tex(parsed_mdl, i)
+			skins[i].tex = tex
+			skins[i].raw_tex = null
+			
+		# group skin
+		else:
+			print(filename, " -- group skin -- ", i)
+			var texs = _get_tex(parsed_mdl, i)
+			skins[i].texs = texs
+			skins[i].raw_texs = null
+		
+		model.skins = skins			
+				
+	model.name = filename	
+	models[filename]= model
+
+
+func _parse_file(filename):
 	
 	var mdl = Dictionary()
 	
@@ -65,9 +160,7 @@ func load_mdl(filename):
 				skingroup_t.add("raw_texs",	parser.T_U8_ARR,	8 + nb*4,	[nb,skin_size]	)
 				skins.append( skingroup_t.eval_as_dict(data, offset) )
 				
-				offset = offset + 8 + nb * 4 + nb * skin_size
-
-				
+				offset = offset + 8 + nb * 4 + nb * skin_size			
 
 	mdl.skins = skins
 	
@@ -272,7 +365,8 @@ func load_mdl(filename):
 	return mdl
 
 
-func get_skin(mdl, index):
+func _get_tex(mdl, index):
+	
 	var skin = mdl.skins[index]
 	var w = mdl.header.skin_width
 	var h = mdl.header.skin_height
@@ -323,7 +417,7 @@ func get_skin(mdl, index):
 		
 		
 
-func get_mesh(mdl):
+func _get_mesh(mdl, index, group_index = 0):
 	
 	var vertices = Array()
 	var normals = Array()
@@ -334,7 +428,7 @@ func get_mesh(mdl):
 	var gd_uvs = PoolVector3Array()
 		
 	# Skin	
-	var skin = get_skin(mdl, 0)
+	# var skin = _get_skin(mdl, 0)
 	
 	# UVs
 	var s = 0
@@ -347,8 +441,7 @@ func get_mesh(mdl):
 		s = float( uv.s ) /w
 		t = float( uv.t ) /h
 		uvs.push_back(Vector3(s,t,0.0))
-	
-	
+		
 	# Verticex
 	# Normals	
 	var scale = mdl.header.scale
@@ -356,9 +449,9 @@ func get_mesh(mdl):
 	var raw_vecs = null
 	
 	if mdl.frames[0].group == 0:
-		raw_vecs = mdl.frames[0].frame.vertices
+		raw_vecs = mdl.frames[index].frame.vertices
 	else:
-		raw_vecs = mdl.frames[0].frames[0].vertices
+		raw_vecs = mdl.frames[index].frames[group_index].vertices
 		
 	for raw_vec in raw_vecs:
 		var x = float(raw_vec.packedpositions[0])
@@ -385,7 +478,7 @@ func get_mesh(mdl):
 		gd_vertices.push_back(vertices[c])
 		gd_normals.push_back(normals[a])
 		gd_normals.push_back(normals[b])
-		gd_normals.push_back(normals[c])			
+		gd_normals.push_back(normals[c])
 		
 		if triangle.facesfront == 0:
 			if onseam[a] == 0x20:
@@ -412,7 +505,7 @@ func get_mesh(mdl):
 		gd_uvs.push_back(uvs[b])
 		gd_uvs.push_back(uvs[c])
 	
-			
+	# Create mesh	
 	var array = Array()
 	array.resize(9)
 	array[Mesh.ARRAY_VERTEX] = gd_vertices
@@ -422,19 +515,16 @@ func get_mesh(mdl):
 	var mesh = ArrayMesh.new()
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, array)
 	
-	var mat = SpatialMaterial.new()
-	mat.set_texture(0, skin)
-	
-	mesh.surface_set_material(0, mat)
+	# Create material
+#	var mat = SpatialMaterial.new()
+#	mat.set_texture(0, skin)
+#
+#	mesh.surface_set_material(0, mat)
 
 	return mesh
 
-
-func _ready():
-	init_precalc_normals()
-
 	
-func init_precalc_normals():
+func _init_precalc_normals():
 	precalc_normals.push_back(Vector3(-0.525731, 0.000000, 0.850651))
 	precalc_normals.push_back(Vector3(-0.442863, 0.238856, 0.864188))
 	precalc_normals.push_back(Vector3(-0.295242, 0.000000, 0.955423))
@@ -598,6 +688,8 @@ func init_precalc_normals():
 	precalc_normals.push_back(Vector3(-0.587785, -0.425325, -0.688191))
 	precalc_normals.push_back(Vector3(-0.688191, -0.587785, -0.425325))
 
-	
 	print(precalc_normals.size(), " precalculated vertex normals loaded.")
-	
+
+
+func _ready():
+	_init_precalc_normals()	

@@ -2,6 +2,8 @@ extends Node
 
 var test2_mdls = null
 var test2_index = 0
+var test3_frames = null
+var test3_index = 0
 
 
 func find_file_by_ext(path, ext):
@@ -27,59 +29,45 @@ func find_file_by_ext(path, ext):
 		print("An error occurred when trying to access the path.")
 
 
-func test_mdl():
-	var mdls = find_file_by_ext("user://data/progs/", ".mdl")	
-	var all_start = OS.get_ticks_msec()
-	
-	for i in mdls:
-		var start = OS.get_ticks_msec()
-		mdl.load_mdl("progs/" + i)
-		var end = OS.get_ticks_msec()	
-		print(i, " loaded. ( ", str(end-start), "ms )")
-
-	var all_end = OS.get_ticks_msec()	
-	print("\nModels loaded in: ", str(all_end-all_start), "ms")	
-
-
-func test_mdl2(filename):
-	var m = mdl.load_mdl("progs/" + filename)	
-	var mi = $"3d/TestMesh"
-	mi.set_mesh(mdl.get_mesh(m))
-	
-	$gui/Label.set_text(filename)
-
-
-
 
 func _ready():
 	print("------------------------------------------------------")
 	#pak.load_pak("PAK0.PAK")
 	pallete.load_pallete()
 	#wad.load_wad("gfx.wad")
-	#var m = mdl.load_mdl("progs/armor.mdl")
-	#var m = mdl.load_mdl("progs/zombie.mdl")
-	#var m = mdl.load_mdl("progs/dog.mdl")
 	
-	#var mesh = mdl.get_mesh(m)
-	#var mi = $"3d/TestMesh"
-	#mi.set_mesh(mesh)
-	
-	
-	test2_mdls = find_file_by_ext("user://data/progs/", ".mdl")
-	test2_index = 0
+#	mdl.load_mdl("progs/armor.mdl")
+#	test2_mdls = find_file_by_ext("user://data/progs/", ".mdl")
+#	for file in test2_mdls:
+#		mdl.load_mdl("progs/" + file)
+#
+#
+#	print(mdl.models)
 
+	mdl.load_mdl("progs/player.mdl")
+
+	mdl.models["progs/player.mdl"].set_node($"3d/TestMesh")
+	print(mdl.models["progs/player.mdl"].frames)
+	mdl.models["progs/player.mdl"].set_frame("stand1")
+	mdl.models["progs/player.mdl"].set_skin(0)
 	
+
+	test3_frames = mdl.models["progs/player.mdl"].frames.keys()
 
 
 	#get_tree().quit()
 
+
 func _on_Timer_timeout():
-	if test2_index >= test2_mdls.size():
-		test2_index = 0
+	
+	if test3_index >= mdl.models["progs/player.mdl"].frames.size() - 1:
+		test3_index = 0
 		
-	test_mdl2(test2_mdls[test2_index])
-	print(test2_mdls[test2_index])
+	mdl.models["progs/player.mdl"].set_frame(test3_frames[test3_index])
+	mdl.models["progs/player.mdl"].set_skin(0)
 	
-	test2_index += 1
+	test3_index += 1
 	
-	$Timer.start()
+	$gui/Label.set_text(test3_frames[test3_index])
+	
+	$"3d/Timer".start()
