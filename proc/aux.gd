@@ -7,7 +7,6 @@ func _get_bit(buffer, offset, bit):
 	return bool(buffer[offset] & _bitmask[bit])
 
 
-
 func _get_bit32(buffer, offset, bit):
 	if bit <= 7:
 		return bool(buffer[offset+3] & _bitmask[bit])
@@ -59,6 +58,20 @@ func get_f32(buffer, offset):
 	return _sign * _fraction * pow(2, _exponent)
 
 
+func get_i16(buffer, offset):
+	var ret = get_u16(buffer, offset)
+	if ret >= 0x8000:
+		ret -= 0xFFFF+1
+	return ret
+
+
+func get_i32(buffer, offset):
+	var ret = get_u32(buffer, offset)
+	if ret >= 0x80000000:
+		ret -= 0xFFFFFFFF+1
+	return ret
+
+
 func get_u32(buffer, offset):
 	var ret = 0
 	ret += buffer[offset]
@@ -72,6 +85,11 @@ func get_u16(buffer, offset):
 	var ret = 0
 	ret += buffer[offset]
 	ret += buffer[offset+1] * 256
+	return ret
+
+
+func get_u8(buffer, offset):
+	var ret = buffer[offset]
 	return ret
 
 
