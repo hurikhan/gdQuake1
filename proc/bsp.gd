@@ -91,7 +91,7 @@ func load_bsp(filename):
 	texinfo_t.add("vectorT",		parser_v2.T_VEC3	)
 	texinfo_t.add("distT",			parser_v2.T_F32		)
 	texinfo_t.add("texture_id",		parser_v2.T_U32		)
-	texinfo_t.add("animated",		parser_v2.T_U32		)	
+	texinfo_t.add("animated",		parser_v2.T_U32		)
 	
 	# -----------------------------------------------------
 	# face_t
@@ -204,20 +204,22 @@ func load_bsp(filename):
 	bsp.header = header
 	
 	bsp.entities = _get_entities(data, header)
-	bsp.planes = _get_entries(data, header.planes, plane_t)		
-	bsp.miptexs = _get_miptexs(data, header, mipheader_t, miptex_t)	
+	bsp.planes = _get_entries(data, header.planes, plane_t)
+	bsp.miptexs = _get_miptexs(data, header, mipheader_t, miptex_t)
 	bsp.vertices = _get_entries(data, header.vertices, vertex_t)
-	bsp.visilist = _get_entries(data, header.visilist, visilist_t)	
-	bsp.nodes = _get_entries(data, header.nodes, node_t)	
+	bsp.visilist = _get_entries(data, header.visilist, visilist_t)
+	bsp.nodes = _get_entries(data, header.nodes, node_t)
 	bsp.texinfos = _get_entries(data, header.texinfo, texinfo_t)
 	bsp.faces = _get_entries(data, header.faces, face_t)
 	# lightmaps
-	bsp.clipnodes = _get_entries(data, header.clipnodes, clipnode_t)	
+	bsp.clipnodes = _get_entries(data, header.clipnodes, clipnode_t)
 	bsp.leaves = _get_entries(data, header.leaves, dleaf_t)
-	bsp.lfaces = _get_entries(data, header.lfaces, lface_t)	
-	bsp.edges = _get_entries(data, header.edges, edge_t)		
-	bsp.ledges = _get_entries(data, header.ledges, ledge_t)	
+	bsp.lfaces = _get_entries(data, header.lfaces, lface_t)
+	bsp.edges = _get_entries(data, header.edges, edge_t)
+	bsp.ledges = _get_entries(data, header.ledges, ledge_t)
 	bsp.models = _get_entries(data, header.models, model_t)
+
+	bsp.filename = filename
 
 	return bsp
 
@@ -261,6 +263,145 @@ func _get_miptexs(data, header, mipheader_t, miptex_t):
 		miptexs[i].raw_tex1 = data.subarray(start, end-1)
 	
 	return miptexs
+
+# ----------------------------------------------------------------------
+
+func _get_triangles(polygon, normal, texinfo, miptex):
+	
+	var ret = Dictionary()
+	var v = PoolVector3Array()
+	var n = PoolVector3Array()
+	var st = PoolVector3Array()
+	
+	while(polygon.size() >= 3):
+		
+		for i in range(3):
+			
+			v.push_back(polygon[i])
+			n.push_back(normal)
+			
+			var s = texinfo.vectorS.dot(polygon[i]) + texinfo.distS 
+			var t = texinfo.vectorT.dot(polygon[i]) + texinfo.distT
+			s /= miptex.width
+			t /= miptex.height
+			st.push_back( Vector3( s, t, 1.0 ))
+		
+		polygon.remove(1)
+			
+	ret.vertices = v
+	ret.normals = n
+	ret.st = st
+	
+	return ret
+
+
+func _get_node(map, model_index):
+	var model = map.models[model_index]
+	var faces = map.faces
+	var ledges = map.ledges
+	var edges = map.edges
+	var vertices = map.vertices
+	var planes = map.planes
+	var texinfos = map.texinfos
+	var miptexs= map.miptexs
+	var tex = Dictionary()
+	var meshes = Dictionary()
+
+	for f in range(model.face_id, model.face_id + model.face_num):
+
+		var tex_key = faces[f].texinfo_id
+
+		var v = PoolVector3Array()
+		var n = PoolVector3Array()
+		var st = PoolVector3Array()
+
+		if not tex.has(tex_key):
+			tex[tex_key] = Dictionary()
+			tex[tex_key].v = v
+			tex[tex_key].n = n
+			tex[tex_key].st = st
+		else:
+			v = tex[tex_key].v
+			n = tex[tex_key].n
+			st = tex[tex_key].st
+
+		var normal = planes[faces[f].plane_id].normal
+							
+		var polygon = PoolVector3Array()
+		
+		for e in range(faces[f].ledge_id, faces[f].ledge_id + faces[f].ledge_num):
+			if ledges[e] > 0:
+				polygon.push_back(vertices[edges[ledges[e]].vertex0])
+			else:
+				polygon.push_back(vertices[edges[-ledges[e]].vertex1])
+		
+		if faces[f].side == 1:
+			normal = normal * -1
+		
+		var texinfo = texinfos[faces[f].texinfo_id]
+		var miptex = miptexs[texinfo.texture_id]
+		var triangles = _get_triangles(polygon, normal, texinfo, miptex)
+		v.append_array(triangles.vertices)
+		n.append_array(triangles.normals)
+		st.append_array(triangles.st)
+		
+		tex[tex_key].v = v
+		tex[tex_key].n = n
+		tex[tex_key].st = st
+
+
+	for t in tex:
+
+		# Create mesh
+		var array = Array()
+		array.resize(9)
+		array[Mesh.ARRAY_VERTEX] = tex[t].v
+		array[Mesh.ARRAY_NORMAL] = tex[t].n
+		array[Mesh.ARRAY_TEX_UV] = tex[t].st
+	
+		var mesh = ArrayMesh.new()
+		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, array)
+		
+		var raw_tex = miptexs[texinfos[t].texture_id].raw_tex1
+		var w = miptexs[texinfos[t].texture_id].width
+		var h = miptexs[texinfos[t].texture_id].height
+		var mat_tex = _get_tex(map, texinfos[t].texture_id)
+		var mat = SpatialMaterial.new()
+		mat.set_texture(0, mat_tex)
+		
+		mesh.surface_set_material(0, mat)
+		
+		meshes[t] = mesh
+	
+	var origin = Spatial.new()
+	
+	for m in meshes:
+		var mi = MeshInstance.new()
+		mi.set_mesh(meshes[m])
+		origin.add_child(mi)
+	
+	return origin
+
+
+func _get_tex(map, index):
+	
+	var data = map.miptexs[index].raw_tex1
+	var w = map.miptexs[index].width
+	var h = map.miptexs[index].height
+	
+	var image = Image.new()
+	image.create(w, h, false, Image.FORMAT_RGB8)
+	image.lock()
+	
+	for x in range(0,w):
+		for y in range(0,h):
+			image.set_pixel(x,y, pallete.color[data[x+y*w]])
+	
+	image.unlock()
+	var tex = ImageTexture.new()
+	tex.create_from_image(image)
+	
+	return tex
 
 
 func _ready():

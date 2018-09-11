@@ -4,7 +4,7 @@
 [ext_resource path="res://observer/observer.tscn" type="PackedScene" id=2]
 [ext_resource path="res://icon.png" type="Texture" id=3]
 
-[sub_resource type="ProceduralSky" id=6]
+[sub_resource type="ProceduralSky" id=1]
 
 radiance_size = 4
 sky_top_color = Color( 0.647059, 0.839216, 0.945098, 1 )
@@ -25,10 +25,10 @@ sun_energy = 8.0
 texture_size = 2
 _sections_unfolded = [ "Sun" ]
 
-[sub_resource type="Environment" id=1]
+[sub_resource type="Environment" id=2]
 
 background_mode = 1
-background_sky = SubResource( 6 )
+background_sky = SubResource( 1 )
 background_sky_custom_fov = 0.0
 background_color = Color( 0, 0, 0, 1 )
 background_energy = 1.0
@@ -106,7 +106,7 @@ adjustment_contrast = 1.0
 adjustment_saturation = 1.0
 _sections_unfolded = [ "Ambient Light", "Background" ]
 
-[sub_resource type="CubeMesh" id=2]
+[sub_resource type="CubeMesh" id=3]
 
 custom_aabb = AABB( 0, 0, 0, 0, 0, 0 )
 flip_faces = false
@@ -115,7 +115,7 @@ subdivide_width = 0
 subdivide_height = 0
 subdivide_depth = 0
 
-[sub_resource type="SpatialMaterial" id=3]
+[sub_resource type="SpatialMaterial" id=4]
 
 render_priority = 0
 flags_transparent = false
@@ -171,19 +171,19 @@ proximity_fade_enable = false
 distance_fade_mode = 0
 _sections_unfolded = [ "Resource" ]
 
-[sub_resource type="DynamicFontData" id=4]
+[sub_resource type="DynamicFontData" id=5]
 
 hinting = 2
 font_path = "res://fonts/Inconsolata-Regular.ttf"
 
-[sub_resource type="DynamicFont" id=5]
+[sub_resource type="DynamicFont" id=6]
 
 size = 64
 outline_size = 0
 outline_color = Color( 1, 1, 1, 1 )
 use_mipmaps = true
 use_filter = true
-font_data = SubResource( 4 )
+font_data = SubResource( 5 )
 _sections_unfolded = [ "Font", "Settings" ]
 
 [node name="root" type="Node"]
@@ -193,11 +193,11 @@ script = ExtResource( 1 )
 _sections_unfolded = [ "Visibility" ]
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="3d"]
-environment = SubResource( 1 )
+environment = SubResource( 2 )
 _sections_unfolded = [ "environment" ]
 
 [node name="TestMesh" type="MeshInstance" parent="3d"]
-transform = Transform( 1, 0, 0, 0, -4.37114e-08, 1, 0, -1, -4.37114e-08, 0, -9.42981, -94.0415 )
+transform = Transform( 1, 0, 0, 0, -4.37114e-08, 1, 0, -1, -4.37114e-08, -29.4493, -9.42981, -94.0415 )
 layers = 1
 material_override = null
 cast_shadow = 1
@@ -207,9 +207,9 @@ lod_min_distance = 0.0
 lod_min_hysteresis = 0.0
 lod_max_distance = 0.0
 lod_max_hysteresis = 0.0
-mesh = SubResource( 2 )
+mesh = SubResource( 3 )
 skeleton = NodePath("..")
-material/0 = SubResource( 3 )
+material/0 = SubResource( 4 )
 _sections_unfolded = [ "Geometry", "LOD", "Script", "Transform", "material" ]
 
 [node name="Observer" parent="3d" instance=ExtResource( 2 )]
@@ -263,7 +263,7 @@ mouse_filter = 2
 mouse_default_cursor_shape = 0
 size_flags_horizontal = 1
 size_flags_vertical = 4
-custom_fonts/font = SubResource( 5 )
+custom_fonts/font = SubResource( 6 )
 text = "Test!"
 percent_visible = 1.0
 lines_skipped = 0

@@ -489,7 +489,7 @@ func _get_mesh(mdl, index, group_index = 0):
 					uvs[b].x += 0.5
 			if onseam[c] == 0x20:
 				if uvs[c].x <= 0.5:
-					uvs[c].x += 0.5					
+					uvs[c].x += 0.5
 		else:
 			if onseam[a] == 0x20:
 				if uvs[a].x >= 0.5:
@@ -499,7 +499,7 @@ func _get_mesh(mdl, index, group_index = 0):
 					uvs[b].x -= 0.5
 			if onseam[c] == 0x20:
 				if uvs[c].x >= 0.5:
-					uvs[c].x -= 0.5			
+					uvs[c].x -= 0.5
 		
 		gd_uvs.push_back(uvs[a])
 		gd_uvs.push_back(uvs[b])
