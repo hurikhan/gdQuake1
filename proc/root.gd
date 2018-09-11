@@ -35,17 +35,17 @@ func _ready():
 	#wad.load_wad("gfx.wad")
 	#mdl.load_mdl("progs/armor.mdl")
 	
-	#var map = bsp.load_bsp("maps/b_bh25.bsp")
-	var map = bsp.load_bsp("maps/e1m1.bsp")
-	#var map = bsp.load_bsp("maps/start.bsp")
-	
-	$gui/Label.set_text(map.filename)
-	
+	var map = bsp.load_bsp("maps/b_bh25.bsp")
+#	var map = bsp.load_bsp("maps/e1m1.bsp")
+#	#var map = bsp.load_bsp("maps/start.bsp")
 	var level = bsp._get_node(map, 0 )
+#	var door1 = bsp._get_node(map, 1 )
+#	var door2 = bsp._get_node(map, 2 )
+	$gui/Label.set_text(map.filename)
+		
 	$"3d/TestMesh".add_child(level)
-	
+#	$"3d/TestMesh".add_child(door1)
+#	$"3d/TestMesh".add_child(door2)
 	#get_tree().quit()
-	
-	
-	
 
+	print(map.entities)

@@ -379,6 +379,7 @@ func _get_node(map, model_index):
 		var mi = MeshInstance.new()
 		mi.set_mesh(meshes[m])
 		origin.add_child(mi)
+		mi.set_owner(origin)
 	
 	return origin
 
