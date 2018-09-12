@@ -28,24 +28,42 @@ func test_armor():
 	mdl.models["progs/armor.mdl"].set_frame("armor")
 
 
+
+func init_console():
+	var banner = """
+           _  ___              _        _
+  __ _  __| |/ _ \\ _   _  __ _| | _____/ |
+ / _` |/ _` | | | | | | |/ _` | |/ / _ \\ |
+| (_| | (_| | |_| | |_| | (_| |   <  __/ |
+ \\__, |\\__,_|\\__\\_\\\\__,_|\\__,_|_|\\_\\___|_|
+ |___/                                    
+"""
+
+	console.con_print(banner)
+	console.load_config()
+
+
+
 func _ready():
 	print("------------------------------------------------------")
+	
+	init_console()
+	
 	#pak.load_pak("PAK0.PAK")
 	pallete.load_pallete()
 	#wad.load_wad("gfx.wad")
 	#mdl.load_mdl("progs/armor.mdl")
 	
-	var map = bsp.load_bsp("maps/b_bh25.bsp")
+#	var map = bsp.load_bsp("maps/b_bh25.bsp")
 #	var map = bsp.load_bsp("maps/e1m1.bsp")
 #	#var map = bsp.load_bsp("maps/start.bsp")
-	var level = bsp._get_node(map, 0 )
+#	var level = bsp._get_node(map, 0 )
 #	var door1 = bsp._get_node(map, 1 )
 #	var door2 = bsp._get_node(map, 2 )
-	$gui/Label.set_text(map.filename)
+#	$gui/Label.set_text(map.filename)
 		
-	$"3d/TestMesh".add_child(level)
+#	$"3d/TestMesh".add_child(level)
 #	$"3d/TestMesh".add_child(door1)
 #	$"3d/TestMesh".add_child(door2)
 	#get_tree().quit()
 
-	print(map.entities)

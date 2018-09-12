@@ -1,18 +1,28 @@
 extends Node
 
+var thread = null
+var thread_map = null
+var thread_status = 0
+var thread_status_label = ""
+var thread_filename = ""
+var thread_timer = null
+
 
 func load_bsp(filename):
+	
+	print(filename)
+	
 	var bsp_file = File.new()
 	bsp_file.open("user://data/" + filename, bsp_file.READ)
 	var data = bsp_file.get_buffer(bsp_file.get_len())
-
+	
 	# -----------------------------------------------------
 	# dentry_t
 	# -----------------------------------------------------
 	var dentry_t = parser_v2.create("dentry_t")
 	dentry_t.add("offset",		parser_v2.T_U32	)
 	dentry_t.add("size",		parser_v2.T_U32	)
-
+	
 	# -----------------------------------------------------
 	# dheader_t
 	# -----------------------------------------------------
@@ -32,9 +42,9 @@ func load_bsp(filename):
 	dheader_t.add("lfaces",			"dentry_t"		)
 	dheader_t.add("edges",			"dentry_t"		)
 	dheader_t.add("ledges",			"dentry_t"		)
-	dheader_t.add("models",			"dentry_t"		)		
+	dheader_t.add("models",			"dentry_t"		)
 	
-		
+	
 	# -----------------------------------------------------
 	# vertex_t
 	# -----------------------------------------------------	
@@ -49,7 +59,7 @@ func load_bsp(filename):
 	var boundbox_t = parser_v2.create("boundbox_t")
 	boundbox_t.add("min",		parser_v2.T_VEC3	)
 	boundbox_t.add("max",		parser_v2.T_VEC3	)
-
+	
 	# -----------------------------------------------------
 	# bboxshort_t
 	# -----------------------------------------------------
@@ -60,7 +70,7 @@ func load_bsp(filename):
 	bboxshort_t.add("max_x",		parser_v2.T_I16	)
 	bboxshort_t.add("max_y",		parser_v2.T_I16	)
 	bboxshort_t.add("max_z",		parser_v2.T_I16	)
-
+	
 	# -----------------------------------------------------
 	# model_t
 	# -----------------------------------------------------
@@ -74,14 +84,14 @@ func load_bsp(filename):
 	model_t.add("numleafs",		parser_v2.T_U32		)
 	model_t.add("face_id",		parser_v2.T_U32		)
 	model_t.add("face_num",		parser_v2.T_U32		)
-
+	
 	# -----------------------------------------------------
 	# edge_t
 	# -----------------------------------------------------
 	var edge_t = parser_v2.create("edge_t")
 	edge_t.add("vertex0",		parser_v2.T_U16	)
 	edge_t.add("vertex1",		parser_v2.T_U16	)
-
+	
 	# -----------------------------------------------------
 	# texinfo_t (doc: surface_t)
 	# -----------------------------------------------------
@@ -107,14 +117,14 @@ func load_bsp(filename):
 	face_t.add("light0",		parser_v2.T_U8	)
 	face_t.add("light1",		parser_v2.T_U8	)
 	face_t.add("lightmap",		parser_v2.T_U32	)
-
+	
 	# -----------------------------------------------------
 	# mipheader_t
 	# -----------------------------------------------------
 	var mipheader_t = parser_v2.create("mipheader_t")
 	mipheader_t.add("numtex",		parser_v2.T_U32					)
 	mipheader_t.add("offsets",		parser_v2.T_U32,	"numtex"	)
-
+	
 	# -----------------------------------------------------
 	# miptex_t
 	# -----------------------------------------------------
@@ -126,7 +136,7 @@ func load_bsp(filename):
 	miptex_t.add("offset2",		parser_v2.T_U32				)
 	miptex_t.add("offset4",		parser_v2.T_U32				)
 	miptex_t.add("offset8",		parser_v2.T_U32				)
-
+	
 	# -----------------------------------------------------
 	# node_t
 	# -----------------------------------------------------
@@ -175,30 +185,29 @@ func load_bsp(filename):
 	visilist_t.add("visilist_t",		parser_v2.T_U8	)
 	# mode
 	visilist_t.set_eval_mode(parser_v2.RETURN_UNWRAPPED)
-
+	
 	# -----------------------------------------------------
 	# plane_t
 	# -----------------------------------------------------	
 	var plane_t = parser_v2.create("visilist_t")
 	plane_t.add("normal",		parser_v2.T_VEC3	)
 	plane_t.add("dist",			parser_v2.T_F32		)
-	plane_t.add("type",			parser_v2.T_U32		)	
-
+	plane_t.add("type",			parser_v2.T_U32		)
+	
 	# -----------------------------------------------------
 	# clipnode_t
 	# -----------------------------------------------------	
 	var clipnode_t = parser_v2.create("clipnode_t")
 	clipnode_t.add("planenum",		parser_v2.T_U32		)
 	clipnode_t.add("front",			parser_v2.T_I16		)
-	clipnode_t.add("back",			parser_v2.T_I16		)	
-
-		
+	clipnode_t.add("back",			parser_v2.T_I16		)
+	
 	# -----------------------------------------------------
 	# eval 
 	# -----------------------------------------------------	
-
+	
 	var bsp = Dictionary()
-
+	
 	var header = _get_header(data, dheader_t)
 	
 	bsp.header = header
@@ -218,14 +227,20 @@ func load_bsp(filename):
 	bsp.edges = _get_entries(data, header.edges, edge_t)
 	bsp.ledges = _get_entries(data, header.ledges, ledge_t)
 	bsp.models = _get_entries(data, header.models, model_t)
-
+	
 	bsp.filename = filename
-
-	return bsp
+	
+	thread_map = bsp
+	thread_status = 100
+	
+#	return bsp
 
 
 
 func _get_header(data, struct):
+	
+	thread_status += 1
+	
 	var header = struct.eval(data, 0)
 	for i in header:
 		print(i, " ",header[i])
@@ -233,6 +248,9 @@ func _get_header(data, struct):
 
 
 func _get_entries(data, dir, struct):
+	
+	thread_status +=1
+	
 	var arr = Array()
 	var struct_size = struct.get_size()
 	
@@ -240,15 +258,21 @@ func _get_entries(data, dir, struct):
 		for i in range(0, dir.size / struct_size):
 			var e = struct.eval(data, dir.offset + i * struct_size)
 			arr.push_back(e)
-
+	
 	return arr
 
 
 func _get_entities(data, header):
+	
+	thread_status +=1
+	
 	return aux.get_string(data, header.entities.offset, header.entities.size)
 
 
 func _get_miptexs(data, header, mipheader_t, miptex_t):
+	
+	thread_status +=1
+	
 	var mipheader = mipheader_t.eval(data, header.miptex.offset)
 	
 	var miptexs = Array()
@@ -306,15 +330,15 @@ func _get_node(map, model_index):
 	var miptexs= map.miptexs
 	var tex = Dictionary()
 	var meshes = Dictionary()
-
+	
 	for f in range(model.face_id, model.face_id + model.face_num):
-
+	
 		var tex_key = faces[f].texinfo_id
-
+	
 		var v = PoolVector3Array()
 		var n = PoolVector3Array()
 		var st = PoolVector3Array()
-
+	
 		if not tex.has(tex_key):
 			tex[tex_key] = Dictionary()
 			tex[tex_key].v = v
@@ -324,7 +348,7 @@ func _get_node(map, model_index):
 			v = tex[tex_key].v
 			n = tex[tex_key].n
 			st = tex[tex_key].st
-
+	
 		var normal = planes[faces[f].plane_id].normal
 							
 		var polygon = PoolVector3Array()
@@ -351,7 +375,7 @@ func _get_node(map, model_index):
 
 
 	for t in tex:
-
+	
 		# Create mesh
 		var array = Array()
 		array.resize(9)
@@ -406,7 +430,76 @@ func _get_tex(map, index):
 
 
 func _ready():
-	#load_bsp("maps/start.bsp")
-	#load_bsp("maps/b_bh25.bsp")
-	pass
+	console.register_command("bsp_map", {
+		node = self,
+		description = "Loads a bsp map.",
+		args = "<Filename>",
+		num_args = 1
+	})
+
+
+func _load_map_sequencer():
 	
+	if thread_status <= 100:
+		var percent = thread_status /float(15) * 100.0
+		$"/root/console/ProgressBar".set_value(percent)
+		
+		match thread_status:
+			1:	thread_status_label = "header"
+			2:	thread_status_label = "entities"
+			3:	thread_status_label = "planes"
+			4:	thread_status_label = "miptexs"
+			5:	thread_status_label = "vertices"
+			6:	thread_status_label = "visilist"
+			7:	thread_status_label = "nodes"
+			8:	thread_status_label = "entities"
+			9:	thread_status_label = "faces"
+			10:	thread_status_label = "clipnodes"
+			11:	thread_status_label = "leaves"
+			12:	thread_status_label = "lfaces"
+			13:	thread_status_label = "edges"
+			14:	thread_status_label = "ledges"
+			15:	thread_status_label = "models"
+			100:thread_status_label = "models"
+	
+		$"/root/console/ProgressBar/Label".set_text(thread_status_label)
+	
+	if thread_status == 0:
+		thread_map = null
+		$"/root/console/ProgressBar".set_value(0)
+		
+		thread = Thread.new()
+		var err = thread.start(self, "load_bsp", thread_filename)
+		
+		if thread_timer == null:
+			thread_timer = Timer.new()
+			thread_timer.set_wait_time(0.1)
+			thread_timer.connect("timeout", self, "_thread_timer")
+			add_child(thread_timer)
+		thread_timer.start()
+	
+	
+	if thread_status == 100:
+		thread_timer.stop()
+		var level = _get_node(thread_map, 0 )
+		level.set_name("map")
+		
+		var world = $"/root/root/3d/TestMesh/"
+		
+		if world.has_node("map"):
+			world.remove_child($"/root/root/3d/TestMesh/map")
+		
+		world.add_child(level)
+		thread.wait_to_finish()
+		thread_status = 0
+
+
+func _thread_timer():
+	_load_map_sequencer()
+	print(thread_status)
+
+
+func _confunc_bsp_map(args):
+	thread_status = 0
+	thread_filename = "maps/" + args[1]
+	_load_map_sequencer()

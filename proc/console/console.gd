@@ -510,7 +510,8 @@ func _handle_cvar(text, cmd):
 			cvar.value = float(cmd[1])
 
 		# Call setter code
-		cvar.node.call(CONSOLE_VAR_PREFIX + cmd[0], cvar.value)
+		if cvar.node.has_method(CONSOLE_VAR_PREFIX + cmd[0]):
+			cvar.node.call(CONSOLE_VAR_PREFIX + cmd[0], cvar.value)
 
 
 func get_cvar(name):
