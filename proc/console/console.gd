@@ -27,8 +27,11 @@ var cfg_filename = "user://config.txt"		# Where to save the cvars. Must be set a
 const CONSOLE_FUNC_PREFIX = "_confunc_"
 const CONSOLE_VAR_PREFIX = "_convar_"
 
+const CONSOLE_STATE_OPENED = 0
+const CONSOLE_STATE_FADING = 1
+const CONSOLE_STATE_CLOSED = 2
 
-
+var state = CONSOLE_STATE_CLOSED
 
 #                    _       
 # _ __ ___  __ _  __| |_   _ 
@@ -65,11 +68,19 @@ func _ready():
 #|_____|      |_|              
 
 func _input(event):
+	
+	if state == CONSOLE_STATE_FADING:
+		return false
+	
 	if event.is_action_pressed("console_toggle"):
 		if not is_console_opened():
 			set_console_opened(false)
 		else:
 			set_console_opened(true)
+		
+		state = CONSOLE_STATE_FADING
+		
+
 	
 	if get_node("LineEdit").get_text() != "" and get_node("LineEdit").has_focus() and event.is_action_pressed("console_clear"):
 		get_node("LineEdit").clear()
@@ -152,19 +163,23 @@ func set_console_opened(opened):
 		show()
 
 
+
 # This signal handles the hiding of the console at the end of the fade-out animation
-func _on_AnimationPlayer_finished():
-	if not is_console_opened():
+func _on_AnimationPlayer_animation_finished(anim_name):
+	if get_node("AnimationPlayer").get_current_animation_position() == 0.0:
+		state = CONSOLE_STATE_OPENED
+	else:
+		state = CONSOLE_STATE_CLOSED
 		hide()
 
 
 # Is the console fully opened?
 func is_console_opened():
-	if modulate.a == 0.0:					# TESTME
-		return false
-	else:
-		Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
+	if state == CONSOLE_STATE_OPENED:
 		return true
+	else:
+		return false
+
 
 
 # Called when the user presses Enter in the console
@@ -967,7 +982,7 @@ func _convar_console_size(value):
 
 # Console -- set alpha
 func _convar_console_alpha(value):
-	self_modulate.a = value					# TESTME
+	self_modulate.a = value
 
 
 # Console -- show
@@ -987,3 +1002,5 @@ func _convar_console_history_autosave(value):
 # Console -- history autosave
 func _convar_console_history_autoload(value):
 	pass
+
+
