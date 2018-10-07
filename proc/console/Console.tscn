@@ -5,7 +5,7 @@
 [ext_resource path="res://fonts/source_code_pro/SourceCodePro-BlackIt.ttf" type="DynamicFontData" id=3]
 [ext_resource path="res://fonts/source_code_pro/SourceCodePro-Bold.ttf" type="DynamicFontData" id=4]
 
-[sub_resource type="DynamicFont" id=8]
+[sub_resource type="DynamicFont" id=1]
 
 size = 16
 outline_size = 0
@@ -15,7 +15,7 @@ use_filter = false
 font_data = ExtResource( 2 )
 _sections_unfolded = [ "Font" ]
 
-[sub_resource type="DynamicFont" id=9]
+[sub_resource type="DynamicFont" id=2]
 
 size = 16
 outline_size = 0
@@ -23,8 +23,9 @@ outline_color = Color( 1, 1, 1, 1 )
 use_mipmaps = false
 use_filter = false
 font_data = ExtResource( 2 )
+_sections_unfolded = [ "Resource" ]
 
-[sub_resource type="DynamicFont" id=10]
+[sub_resource type="DynamicFont" id=3]
 
 size = 16
 outline_size = 0
@@ -34,7 +35,7 @@ use_filter = false
 font_data = ExtResource( 3 )
 _sections_unfolded = [ "Settings" ]
 
-[sub_resource type="DynamicFont" id=11]
+[sub_resource type="DynamicFont" id=4]
 
 size = 16
 outline_size = 0
@@ -44,7 +45,7 @@ use_filter = false
 font_data = ExtResource( 4 )
 _sections_unfolded = [ "Font", "font_data" ]
 
-[sub_resource type="DynamicFont" id=12]
+[sub_resource type="DynamicFont" id=5]
 
 size = 16
 outline_size = 0
@@ -62,7 +63,7 @@ outline_color = Color( 1, 1, 1, 1 )
 use_mipmaps = false
 use_filter = false
 font_data = ExtResource( 2 )
-_sections_unfolded = [ "Font" ]
+_sections_unfolded = [ "Font", "font_data" ]
 
 [sub_resource type="Animation" id=7]
 
@@ -83,7 +84,7 @@ tracks/0/keys = {
 "values": [ Color( 1, 1, 1, 1 ), Color( 1, 1, 1, 0 ) ]
 }
 
-[sub_resource type="DynamicFont" id=13]
+[sub_resource type="DynamicFont" id=8]
 
 size = 16
 outline_size = 0
@@ -94,6 +95,7 @@ font_data = ExtResource( 2 )
 _sections_unfolded = [ "Font" ]
 
 [node name="console" type="Panel"]
+modulate = Color( 1, 1, 1, 0 )
 anchor_left = 0.0
 anchor_top = 0.0
 anchor_right = 1.0
@@ -105,7 +107,7 @@ mouse_default_cursor_shape = 0
 size_flags_horizontal = 1
 size_flags_vertical = 1
 script = ExtResource( 1 )
-_sections_unfolded = [ "Anchor", "Script", "Visibility" ]
+_sections_unfolded = [ "Anchor", "Script" ]
 
 [node name="LineEdit" type="LineEdit" parent="."]
 anchor_left = 0.0
@@ -122,7 +124,7 @@ mouse_filter = 0
 mouse_default_cursor_shape = 1
 size_flags_horizontal = 1
 size_flags_vertical = 1
-custom_fonts/font = SubResource( 8 )
+custom_fonts/font = SubResource( 1 )
 secret_character = "*"
 focus_mode = 2
 context_menu_enabled = true
@@ -131,7 +133,7 @@ placeholder_alpha = 0.6
 caret_blink = false
 caret_blink_speed = 0.65
 caret_position = 0
-_sections_unfolded = [ "Anchor", "Grow Direction", "Margin", "custom_fonts", "custom_fonts/font" ]
+_sections_unfolded = [ "Anchor", "Grow Direction", "Margin", "custom_fonts/font" ]
 
 [node name="ConsoleText" type="RichTextLabel" parent="."]
 anchor_left = 0.0
@@ -148,10 +150,10 @@ mouse_filter = 0
 mouse_default_cursor_shape = 0
 size_flags_horizontal = 1
 size_flags_vertical = 1
-custom_fonts/mono_font = SubResource( 9 )
-custom_fonts/bold_italics_font = SubResource( 10 )
-custom_fonts/italics_font = SubResource( 11 )
-custom_fonts/bold_font = SubResource( 12 )
+custom_fonts/mono_font = SubResource( 2 )
+custom_fonts/bold_italics_font = SubResource( 3 )
+custom_fonts/italics_font = SubResource( 4 )
+custom_fonts/bold_font = SubResource( 5 )
 custom_fonts/normal_font = SubResource( 6 )
 bbcode_enabled = false
 bbcode_text = ""
@@ -164,7 +166,7 @@ scroll_active = true
 scroll_following = false
 selection_enabled = true
 override_selected_font_color = false
-_sections_unfolded = [ "Anchor", "Grow Direction", "Hint", "Margin", "Rect", "Size Flags", "custom_fonts", "custom_fonts/mono_font", "custom_fonts/normal_font" ]
+_sections_unfolded = [ "custom_fonts", "custom_fonts/normal_font" ]
 
 [node name="AnimationPlayer" type="AnimationPlayer" parent="."]
 root_node = NodePath("..")
@@ -197,7 +199,7 @@ rounded = false
 allow_greater = false
 allow_lesser = false
 percent_visible = true
-_sections_unfolded = [ "Anchor", "Margin" ]
+_sections_unfolded = [ "Anchor", "Margin", "Material" ]
 
 [node name="Label" type="Label" parent="ProgressBar"]
 anchor_left = 0.5
@@ -214,7 +216,7 @@ mouse_filter = 2
 mouse_default_cursor_shape = 0
 size_flags_horizontal = 1
 size_flags_vertical = 4
-custom_fonts/font = SubResource( 13 )
+custom_fonts/font = SubResource( 8 )
 align = 1
 percent_visible = 1.0
 lines_skipped = 0

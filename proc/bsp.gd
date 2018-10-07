@@ -6,11 +6,14 @@ var thread_status = 0
 var thread_status_label = ""
 var thread_filename = ""
 var thread_timer = null
+var start = 0
+var end = 0
+
 
 
 func load_bsp(filename):
 	
-	print(filename)
+	thread_status = 1
 	
 	var bsp_file = File.new()
 	bsp_file.open("user://data/" + filename, bsp_file.READ)
@@ -247,6 +250,7 @@ func _get_header(data, struct):
 	return header
 
 
+
 func _get_entries(data, dir, struct):
 	
 	thread_status +=1
@@ -262,11 +266,40 @@ func _get_entries(data, dir, struct):
 	return arr
 
 
+
 func _get_entities(data, header):
 	
 	thread_status +=1
 	
-	return aux.get_string(data, header.entities.offset, header.entities.size)
+	var entities = Array()
+	var s : String = aux.get_string(data, header.entities.offset, header.entities.size)
+	var entries = s.split("{")
+	
+	for e in entries:
+		var sub_e = e.split("\n")
+		
+		#print(sub_e)
+		
+		var entity = Dictionary()
+		
+		for i in sub_e:
+			
+			if i == "}":
+				break
+			
+			if i.begins_with("\""):
+				var name_end = i.find("\"", 1)
+				var name = i.substr(1, name_end-1)
+				
+				var value = i.substr(name_end + 3, len(i) - name_end - 4 ) 
+				
+				entity[name] = value
+		
+		if len(entity) != 0:
+			entities.push_back(entity)
+	
+	return entities
+
 
 
 func _get_miptexs(data, header, mipheader_t, miptex_t):
@@ -289,6 +322,8 @@ func _get_miptexs(data, header, mipheader_t, miptex_t):
 	return miptexs
 
 # ----------------------------------------------------------------------
+
+
 
 func _get_triangles(polygon, normal, texinfo, miptex):
 	
@@ -319,7 +354,11 @@ func _get_triangles(polygon, normal, texinfo, miptex):
 	return ret
 
 
+
 func _get_node(map, model_index):
+	
+	thread_status = 101
+	
 	var model = map.models[model_index]
 	var faces = map.faces
 	var ledges = map.ledges
@@ -372,8 +411,9 @@ func _get_node(map, model_index):
 		tex[tex_key].v = v
 		tex[tex_key].n = n
 		tex[tex_key].st = st
-
-
+	
+	var t_index = 0
+	
 	for t in tex:
 	
 		# Create mesh
@@ -384,6 +424,7 @@ func _get_node(map, model_index):
 		array[Mesh.ARRAY_TEX_UV] = tex[t].st
 	
 		var mesh = ArrayMesh.new()
+		mesh.set_name("Tex_MeshInstance_" + str(t_index))
 		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, array)
 		
 		var raw_tex = miptexs[texinfos[t].texture_id].raw_tex1
@@ -396,6 +437,8 @@ func _get_node(map, model_index):
 		mesh.surface_set_material(0, mat)
 		
 		meshes[t] = mesh
+		
+		t_index += 1
 	
 	var origin = Spatial.new()
 	
@@ -405,7 +448,10 @@ func _get_node(map, model_index):
 		origin.add_child(mi)
 		mi.set_owner(origin)
 	
+	thread_status = 200
+	
 	return origin
+
 
 
 func _get_tex(map, index):
@@ -429,42 +475,39 @@ func _get_tex(map, index):
 	return tex
 
 
-func _ready():
-	console.register_command("bsp_map", {
-		node = self,
-		description = "Loads a bsp map.",
-		args = "<Filename>",
-		num_args = 1
-	})
-
 
 func _load_map_sequencer():
 	
-	if thread_status <= 100:
-		var percent = thread_status /float(15) * 100.0
+	if thread_status != 0:
+		var percent = thread_status /float(17) * 100.0
 		$"/root/console/ProgressBar".set_value(percent)
 		
 		match thread_status:
-			1:	thread_status_label = "header"
-			2:	thread_status_label = "entities"
-			3:	thread_status_label = "planes"
-			4:	thread_status_label = "miptexs"
-			5:	thread_status_label = "vertices"
-			6:	thread_status_label = "visilist"
-			7:	thread_status_label = "nodes"
-			8:	thread_status_label = "entities"
-			9:	thread_status_label = "faces"
-			10:	thread_status_label = "clipnodes"
-			11:	thread_status_label = "leaves"
-			12:	thread_status_label = "lfaces"
-			13:	thread_status_label = "edges"
-			14:	thread_status_label = "ledges"
-			15:	thread_status_label = "models"
-			100:thread_status_label = "models"
+			1:	thread_status_label = "parsing bsp file"
+			2:	thread_status_label = "header"
+			3:	thread_status_label = "entities"
+			4:	thread_status_label = "planes"
+			5:	thread_status_label = "miptexs"
+			6:	thread_status_label = "vertices"
+			7:	thread_status_label = "visilist"
+			8:	thread_status_label = "nodes"
+			9:	thread_status_label = "entities"
+			10:	thread_status_label = "faces"
+			11:	thread_status_label = "clipnodes"
+			12:	thread_status_label = "leaves"
+			13:	thread_status_label = "lfaces"
+			14:	thread_status_label = "edges"
+			15:	thread_status_label = "ledges"
+			16:	thread_status_label = "models"
+			101:thread_status_label = "generating meshes"
 	
 		$"/root/console/ProgressBar/Label".set_text(thread_status_label)
 	
+	
 	if thread_status == 0:
+		
+		start = OS.get_ticks_msec()
+		
 		thread_map = null
 		$"/root/console/ProgressBar".set_value(0)
 		
@@ -473,33 +516,121 @@ func _load_map_sequencer():
 		
 		if thread_timer == null:
 			thread_timer = Timer.new()
-			thread_timer.set_wait_time(0.1)
+			thread_timer.set_wait_time(0.01)
 			thread_timer.connect("timeout", self, "_thread_timer")
 			add_child(thread_timer)
 		thread_timer.start()
 	
 	
 	if thread_status == 100:
-		thread_timer.stop()
+		
+		end = OS.get_ticks_msec()
+		console.con_print_ok("Parsed bsp entries in %s ms." % str(end-start))
+		start = OS.get_ticks_msec()
+		
+		thread.wait_to_finish()
 		var level = _get_node(thread_map, 0 )
 		level.set_name("map")
 		
-		var world = $"/root/root/3d/TestMesh/"
+		var world = $"/root/world/3d/TestMesh"
 		
 		if world.has_node("map"):
-			world.remove_child($"/root/root/3d/TestMesh/map")
+			world.remove_child($"/root/world/3d/TestMesh/map")
 		
 		world.add_child(level)
-		thread.wait_to_finish()
+	
+	
+	if thread_status == 200:
+		end = OS.get_ticks_msec()
+		console.con_print_ok("Generated models and textures in %s ms." % str(end-start))
+		thread_timer.stop()
 		thread_status = 0
+		$"/root/console/ProgressBar/Label".set_text("")
+
 
 
 func _thread_timer():
 	_load_map_sequencer()
-	print(thread_status)
+
+
+func _ready():
+	console.register_command("bsp_map", {
+		node = self,
+		description = "Loads a bsp map.",
+		args = "<Filename>",
+		num_args = 1
+	})
+	console.register_command("bsp_entity_list", {
+		node = self,
+		description = "Lists the entities with the specified classname",
+		args = "<Classname>",
+		num_args = 1
+	})
+	console.register_command("bsp_entity_show", {
+		node = self,
+		description = "Shows the entities with the specified classname",
+		args = "<Classname>",
+		num_args = 1
+	})
+
+
+func _load_icon(name, caption = "Caption!", text = ""):
+	var scene = preload("res://gfx/icons/Icon.tscn").instance()
+	scene.set_rotation_degrees(Vector3(90,0,0))
+	
+	scene.get_node("Viewport/IconText/Caption").set_text(caption)
+	scene.get_node("Viewport/IconText/Text").set_text(text)
+		
+	return scene
 
 
 func _confunc_bsp_map(args):
 	thread_status = 0
 	thread_filename = "maps/" + args[1]
 	_load_map_sequencer()
+
+
+func _confunc_bsp_entity_list(args):
+	
+	var num = 0
+	
+	for i in thread_map.entities:
+		if args[1] != "":
+			if i["classname"] == args[1]:
+				console.con_print(str(num) + ":" + str(i))
+		else:
+			console.con_print(str(num) + ":" + str(i))
+		
+		num += 1
+
+
+func _confunc_bsp_entity_show(args):
+	
+	var world = $"/root/world/3d/TestMesh"
+	var index_num = 0
+	var light_num = 0
+	
+	for i in thread_map.entities:
+		
+		if i["classname"] == args[1]:
+			if i["classname"] == "light":
+				
+				var xyz = i["origin"].split(" ")
+				var x = float(xyz[0])
+				var y = float(xyz[1])
+				var z = float(xyz[2])
+				var origin = Vector3(x, y, z)
+				
+				var icon = _load_icon("sun", "[" + str(index_num) + "] light" + str(light_num))
+				icon.set_translation(origin)
+				world.add_child(icon)
+				
+				var light = OmniLight.new()
+				light.set_translation(origin)
+				light.omni_range = 1000
+				light.light_energy = 3
+				world.add_child(light)
+				
+				light_num += 1
+		
+		index_num += 1

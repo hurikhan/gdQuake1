@@ -1,0 +1,5 @@
+* create icon folder
+* create a pattern to show the loading process generally (now only bsp)
+* remove the testmesh
+* parser as c++ module?
+

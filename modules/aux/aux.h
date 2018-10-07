@@ -3,7 +3,7 @@
 #ifndef AUX_H
 #define AUX_H
 
-#include "reference.h"
+#include "core/reference.h"
 
 class Aux : public Reference {
 	GDCLASS(Aux, Reference);

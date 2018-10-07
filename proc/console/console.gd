@@ -118,8 +118,9 @@ func _history_up():
 	if history_idx < history.size():
 		history_idx = history_idx + 1
 		get_node("LineEdit").set_text( history[ history_idx-1 ] )
-		get_node("LineEdit").set_cursor_position( history[ history_idx-1 ].length() )
+		get_node("LineEdit").set_cursor_position( history[ history_idx-1 ].length()  )
 		#print(history_idx)
+
 
 
 func _history_down():
@@ -202,32 +203,32 @@ func _on_LineEdit_text_entered(text):
 #               |_____|_|                     
 
 func con_print(text, echo=true):
-	console_text.append_bbcode(text + "\n")
+	console_text.append_bbcode(str(text) + "\n")
 	if echo:
 		print(text)
 
 
 func con_print_ok(text):
 	# green text
-	console_text.append_bbcode("[color=green][OK]    -- " + text + "[/color]\n")
+	console_text.append_bbcode("[color=green][OK]    -- " + str(text) + "[/color]\n")
 	print(text)
 
 
 func con_print_warn(text):
 	# yellow text
-	console_text.append_bbcode("[color=yellow][WARN]  -- " + text + "[/color]\n")
+	console_text.append_bbcode("[color=yellow][WARN]  -- " + str(text) + "[/color]\n")
 	print(text)
 
 
 func con_print_error(text):
 	# red text
-	console_text.append_bbcode("[color=#ff4444][ERROR] -- " + text + "[/color]\n")
+	console_text.append_bbcode("[color=#ff4444][ERROR] -- " + str(text) + "[/color]\n")
 	print(text)
 
 
 func con_print_array(arr):
 	for entry in arr:
-		console_text.append_bbcode(entry + "\n")
+		console_text.append_bbcode(str(entry) + "\n")
 		print(entry)
 
 
