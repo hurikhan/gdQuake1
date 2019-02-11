@@ -992,8 +992,8 @@ func _convar_console_show(value):
 	if value == 1:
 		set_console_opened(false)
 	else:
-		#set_console_opened(true)
-		pass
+		set_console_opened(true)
+		
 
 
 # Console -- history autosave

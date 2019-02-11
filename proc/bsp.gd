@@ -173,6 +173,15 @@ func load_bsp(filename):
 	# mode
 	lface_t.set_eval_mode(parser_v2.RETURN_UNWRAPPED)
 	
+	
+	# -----------------------------------------------------
+	# lightmap_t
+	# -----------------------------------------------------	
+	var lightmap_t = parser_v2.create("lightmap_t")
+	lightmap_t.add("lightmap",		parser_v2.T_U8			)
+	# mode
+	lightmap_t.set_eval_mode(parser_v2.RETURN_UNWRAPPED)
+	
 	# -----------------------------------------------------
 	# ledge_t
 	# -----------------------------------------------------	
@@ -223,7 +232,7 @@ func load_bsp(filename):
 	bsp.nodes = _get_entries(data, header.nodes, node_t)
 	bsp.texinfos = _get_entries(data, header.texinfo, texinfo_t)
 	bsp.faces = _get_entries(data, header.faces, face_t)
-	# lightmaps
+	bsp.lightmaps = _get_entries(data, header.lightmaps, lightmap_t)
 	bsp.clipnodes = _get_entries(data, header.clipnodes, clipnode_t)
 	bsp.leaves = _get_entries(data, header.leaves, dleaf_t)
 	bsp.lfaces = _get_entries(data, header.lfaces, lface_t)
@@ -353,6 +362,11 @@ func _get_triangles(polygon, normal, texinfo, miptex):
 	
 	return ret
 
+
+
+func _get_bbox(polygon, normal):
+	for vec in polygon:
+		var st = vec.dot(normal)
 
 
 func _get_node(map, model_index):
@@ -531,11 +545,12 @@ func _load_map_sequencer():
 		thread.wait_to_finish()
 		var level = _get_node(thread_map, 0 )
 		level.set_name("map")
+		level.set_rotation_degrees(Vector3(-90,0,0))
 		
-		var world = $"/root/world/3d/TestMesh"
+		var world = $"/root/world/"
 		
 		if world.has_node("map"):
-			world.remove_child($"/root/world/3d/TestMesh/map")
+			world.remove_child($"/root/world/map")
 		
 		world.add_child(level)
 	
@@ -606,7 +621,7 @@ func _confunc_bsp_entity_list(args):
 
 func _confunc_bsp_entity_show(args):
 	
-	var world = $"/root/world/3d/TestMesh"
+	var icons_node = $"/root/world/icons"
 	var index_num = 0
 	var light_num = 0
 	
@@ -623,13 +638,13 @@ func _confunc_bsp_entity_show(args):
 				
 				var icon = _load_icon("sun", "[" + str(index_num) + "] light" + str(light_num))
 				icon.set_translation(origin)
-				world.add_child(icon)
+				icons_node.add_child(icon)
 				
 				var light = OmniLight.new()
 				light.set_translation(origin)
 				light.omni_range = 1000
 				light.light_energy = 3
-				world.add_child(light)
+				icons_node.add_child(light)
 				
 				light_num += 1
 		

@@ -6,7 +6,8 @@ func _get_pack_entry(data, offset, number):
 	var file_offset = aux.get_u32(data, offset+(64*number) + 56)
 	var file_size = aux.get_u32(data, offset+(64*number) + 60)
 	
-	print("pak_entry: ", file_name, " ", file_offset, " ", file_size)
+	#print("pak_entry: ", file_name, " ", file_offset, " ", file_size)
+	console.con_print("pak_entry: " + file_name + " " + str(file_offset) + " " + str(file_size))
 	
 	var sub = data.subarray(file_offset, file_offset + file_size-1)
 	var new_file_name = "user://data/" + file_name
@@ -44,8 +45,21 @@ func load_pak(filename):
 	var header_size = aux.get_u32(data, 8)
 	var header_entries = header_size / 64
 	
-	print("pak_header_offset: ", header_offset)
-	print("pak_header_size: ", header_size, " (", header_entries, " entries)")
+	console.con_print("pak_header_offset: " + str(header_offset))
+	console.con_print("pak_header_size: " + str(header_size) + " (" + str(header_entries) + " entries)")
 	
 	for i in range(0, header_entries):
 		_get_pack_entry(data, header_offset, i)
+
+
+func _ready():
+	console.register_command("pak_init", {
+		node = self,
+		description = "Deflates the pak file.",
+		args = "",
+		num_args = 0
+	})
+
+
+func _confunc_pak_init():
+	pak.load_pak("PAK0.PAK")

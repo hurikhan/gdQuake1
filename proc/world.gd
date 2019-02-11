@@ -66,3 +66,7 @@ func _ready():
 #	$"3d/TestMesh".add_child(door1)
 #	$"3d/TestMesh".add_child(door2)
 	#get_tree().quit()
+
+
+func _on_Button_toggled(button_pressed):
+	console.set_console_opened(button_pressed)
