@@ -1,3 +1,5 @@
 *.o
 proc/.import
 proc/export_presets.cfg
+___/
+*.PAK
