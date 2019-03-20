@@ -4,5 +4,4 @@
 
 [node name="client" type="Spatial"]
 script = ExtResource( 1 )
-_sections_unfolded = [ "Script" ]
 

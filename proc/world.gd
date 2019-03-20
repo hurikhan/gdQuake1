@@ -50,7 +50,7 @@ func _ready():
 	init_console()
 	
 	#pak.load_pak("PAK0.PAK")
-	pallete.load_pallete()
+	#pallete.load_pallete()
 	#wad.load_wad("gfx.wad")
 	#mdl.load_mdl("progs/armor.mdl")
 	
@@ -66,6 +66,21 @@ func _ready():
 #	$"3d/TestMesh".add_child(door1)
 #	$"3d/TestMesh".add_child(door2)
 	#get_tree().quit()
+	
+	var archive = preload("res://addons/gdArchive/gdArchive.gdns").new()
+	
+	print(archive.get_version())
+	print(archive.get_info())
+	print(archive.open("user://downloads/lutris/quake-shareware.tar.gz"))
+	#var files = archive.list()
+	var files = archive.extract("user://test/")
+	print(archive.close())
+	
+	for f in files:
+		print(f)
+	
+	get_tree().quit()
+
 
 
 func _on_Button_toggled(button_pressed):

@@ -1,5 +1,7 @@
-*.o
 proc/.import
 proc/export_presets.cfg
-___/
+proc/godot
+proc/addons
+*.o
 *.PAK
+__pycache__
