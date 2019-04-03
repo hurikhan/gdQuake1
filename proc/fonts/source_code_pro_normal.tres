@@ -7,4 +7,3 @@ font_path = "res://fonts/source_code_pro/SourceCodePro-Regular.ttf"
 size = 42
 outline_size = 1
 font_data = SubResource( 1 )
-

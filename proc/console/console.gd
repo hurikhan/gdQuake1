@@ -32,6 +32,7 @@ const CONSOLE_STATE_FADING = 1
 const CONSOLE_STATE_CLOSED = 2
 
 var state = CONSOLE_STATE_CLOSED
+var busy = false
 
 #                    _       
 # _ __ ___  __ _  __| |_   _ 
@@ -59,7 +60,6 @@ func _ready():
 	_register_cvars()
 
 
-
 #      _                   _   
 #     (_)_ __  _ __  _   _| |_ 
 #     | | '_ \| '_ \| | | | __|
@@ -80,7 +80,6 @@ func _input(event):
 		
 		state = CONSOLE_STATE_FADING
 		
-
 	
 	if get_node("LineEdit").get_text() != "" and get_node("LineEdit").has_focus() and event.is_action_pressed("console_clear"):
 		get_node("LineEdit").clear()
@@ -156,11 +155,13 @@ func set_console_opened(opened):
 	# Close the console
 	if opened == true:
 		get_node("AnimationPlayer").play("fade")
+		Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 		# Signal handles the hiding at the end of the animation
 	# Open the console
 	elif opened == false:
 		get_node("AnimationPlayer").play_backwards("fade")
 		get_node("LineEdit").grab_focus()
+		Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
 		show()
 
 
@@ -231,6 +232,51 @@ func con_print_array(arr):
 		console_text.append_bbcode(str(entry) + "\n")
 		print(entry)
 
+var _progress_thread
+var _progress_timer
+var _progress_status_node
+var _progress_status_func
+var _progress_status_firstcall = false
+var _progress_status_text = ""
+
+func _con_progress_status():
+	_progress_status_text = "Downloading... %3d%%\n"
+	
+	var percent = int(_progress_status_node.call(_progress_status_func) * 100)
+	var status_text = _progress_status_text % percent
+	
+	if _progress_status_firstcall == true:
+		console_text.append_bbcode(status_text)
+		_progress_status_firstcall = false
+		return
+	else:
+		console_text.remove_line(console_text.get_line_count() - 1)
+		console_text.update()
+		console_text.append_bbcode(status_text)
+		console_text.update()
+		pass
+	
+	if percent >= 100:
+		_progress_timer.autostart = false
+		_progress_timer.stop()
+	
+
+func con_progress(thread_node, thread_func, thread_parameter, status_func):
+		_progress_thread = Thread.new()
+		
+		var err = _progress_thread.start(thread_node, thread_func, thread_parameter)
+		
+		print(err)
+		
+		if err == 0:
+			_progress_status_node = thread_node
+			_progress_status_func = status_func
+			_progress_status_firstcall = true
+			_progress_timer = Timer.new()
+			_progress_timer.set_wait_time(0.5)
+			_progress_timer.connect("timeout", self, "_con_progress_status")
+			_progress_timer.autostart = true
+			add_child(_progress_timer)
 
 
 #                _     _            

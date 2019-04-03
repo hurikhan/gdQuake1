@@ -43,7 +43,6 @@ tracks/0/keys = {
 font_data = ExtResource( 2 )
 
 [node name="console" type="Panel"]
-modulate = Color( 1, 1, 1, 0 )
 anchor_right = 1.0
 anchor_bottom = 1.0
 script = ExtResource( 1 )
@@ -76,6 +75,7 @@ selection_enabled = true
 anims/fade = SubResource( 7 )
 
 [node name="ProgressBar" type="ProgressBar" parent="."]
+visible = false
 anchor_right = 1.0
 margin_bottom = 37.0
 step = 1.0
@@ -89,6 +89,5 @@ margin_right = 71.0
 margin_bottom = 63.0
 custom_fonts/font = SubResource( 8 )
 align = 1
-
 [connection signal="text_entered" from="LineEdit" to="." method="_on_LineEdit_text_entered"]
 [connection signal="animation_finished" from="AnimationPlayer" to="." method="_on_AnimationPlayer_animation_finished"]

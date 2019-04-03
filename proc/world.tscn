@@ -68,4 +68,3 @@ text = "Test!"
 [node name="TouchControl" type="Control" parent="gui"]
 anchor_right = 1.0
 anchor_bottom = 1.0
-
