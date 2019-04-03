@@ -1,7 +1,6 @@
 proc/.import
 proc/export_presets.cfg
 proc/godot
-proc/addons
 *.o
 *.PAK
 __pycache__
