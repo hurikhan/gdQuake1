@@ -61,10 +61,6 @@ func _ready():
 #	var door1 = bsp._get_node(map, 1 )
 #	var door2 = bsp._get_node(map, 2 )
 #	$gui/Label.set_text(map.filename)
-		
-#	$"3d/TestMesh".add_child(level)
-#	$"3d/TestMesh".add_child(door1)
-#	$"3d/TestMesh".add_child(door2)
 	#get_tree().quit()
 
 func _on_Button_toggled(button_pressed):
