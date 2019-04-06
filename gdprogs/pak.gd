@@ -2,14 +2,14 @@ extends Node
 
 
 func _get_pack_entry(data, offset, number):
-	var file_name = aux.get_string(data, offset+(64*number), 56)
-	var file_offset = aux.get_u32(data, offset+(64*number) + 56)
-	var file_size = aux.get_u32(data, offset+(64*number) + 60)
+	var file_name = data.get_string(offset+(64*number), 56)
+	var file_offset = data.get_u32(offset+(64*number) + 56)
+	var file_size = data.get_u32(offset+(64*number) + 60)
 	
-	#print("pak_entry: ", file_name, " ", file_offset, " ", file_size)
-	console.con_print("pak_entry: " + file_name + " " + str(file_offset) + " " + str(file_size))
+	var s = "pak_entry[%d]: %s %d %d" % [ number, file_name, file_offset, file_size]
+	console.con_print(s)
 	
-	var sub = data.subarray(file_offset, file_offset + file_size-1)
+	var sub = data.get_subarray(file_offset, file_offset + file_size-1)
 	var new_file_name = "user://data/" + file_name
 	
 	var dir = Directory.new()
@@ -24,16 +24,19 @@ func _get_pack_entry(data, offset, number):
 func load_pak(filename):
 	var pak = File.new()
 	pak.open("user://uncompressed/QUAKE_SW/ID1/" + filename, pak.READ)
-	var data = pak.get_buffer(pak.get_len())
+	var buffer = pak.get_buffer(pak.get_len())
+	
+	var data = preload("res://addons/gdPoolByteArrayExt/gdPoolByteArrayExt.gdns").new()
+	data.read(buffer)
 	
 	print("pak_file: ", filename)
 	print("pak_size: ", data.size(), " bytes")
 	
 	var id = ""
-	id += char(data[0])
-	id += char(data[1])
-	id += char(data[2])
-	id += char(data[3])
+	id += char(data.get_u8(0))
+	id += char(data.get_u8(1))
+	id += char(data.get_u8(2))
+	id += char(data.get_u8(3))
 	
 	print("pak_header_id: ", id)
 	
@@ -41,8 +44,8 @@ func load_pak(filename):
 		print("Not a PAK file!")
 		return
 	
-	var header_offset = aux.get_u32(data, 4)
-	var header_size = aux.get_u32(data, 8)
+	var header_offset = data.get_u32(4)
+	var header_size = data.get_u32(8)
 	var header_entries = header_size / 64
 	
 	console.con_print("pak_header_offset: " + str(header_offset))
