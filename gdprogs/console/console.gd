@@ -31,6 +31,18 @@ const CONSOLE_STATE_OPENED = 0
 const CONSOLE_STATE_FADING = 1
 const CONSOLE_STATE_CLOSED = 2
 
+var ansi = false
+var ANSI_BOLD = char(0x1B) + "[1;1m"
+var ANSI_RED = char(0x1B) + "[1;31m"
+var ANSI_GREEN = char(0x1B) + "[1;32m"
+var ANSI_YELLOW = char(0x1B) + "[1;33m"
+var ANSI_BLUE = char(0x1B) + "[1;34m"
+var ANSI_MAGENTA = char(0x1B) + "[1;35m"
+var ANSI_AQUAMARINE = char(0x1B) + "[1;96m"
+var ANSI_RESET = char(0x1B) + "[0m"
+
+
+
 var state = CONSOLE_STATE_CLOSED
 var busy = false
 
@@ -58,7 +70,10 @@ func _ready():
 	#ConsoleCommands.register_all()
 	_register_commands()
 	_register_cvars()
-
+	
+	if OS.has_environment("TERM"):
+		if OS.get_environment("TERM") == "xterm-256color":
+			ansi = true
 
 #      _                   _   
 #     (_)_ __  _ __  _   _| |_ 
@@ -88,18 +103,30 @@ func _input(event):
 		if not tab_bbcode == "":
 			get_node("ConsoleText").parse_bbcode(tab_bbcode)
 			tab_bbcode = ""
+		get_tree().set_input_as_handled ()
+		return
 	
-	if get_node("LineEdit").has_focus() and event.is_action_pressed("ui_up"):
+	if get_node("LineEdit").has_focus() and event.is_action_pressed("console_up"):
 		_history_up()
+		get_tree().set_input_as_handled()
+		return
 	
-	if get_node("LineEdit").has_focus() and event.is_action_pressed("ui_down"):
+	if get_node("LineEdit").has_focus() and event.is_action_pressed("console_down"):
 		_history_down()
+		get_tree().set_input_as_handled()
+		return
 	
 	if get_node("LineEdit").has_focus() and event.is_action_pressed("console_clear"):
 		_confunc_clear()
+		get_tree().set_input_as_handled()
+		return
 	
 	if get_node("LineEdit").get_text() != "" and get_node("LineEdit").has_focus() and Input.is_key_pressed(KEY_TAB):
 		_tab_complete()
+		get_tree().set_input_as_handled()
+		return
+	
+
 
 
 
@@ -111,14 +138,10 @@ func _input(event):
 #                           |___/ 
 
 func _history_up():
-	
-	#print(history)
-	
 	if history_idx < history.size():
 		history_idx = history_idx + 1
 		get_node("LineEdit").set_text( history[ history_idx-1 ] )
 		get_node("LineEdit").set_cursor_position( history[ history_idx-1 ].length()  )
-		#print(history_idx)
 
 
 
@@ -131,7 +154,6 @@ func _history_down():
 		else:
 			get_node("LineEdit").set_text( history[ history_idx - 1] )
 			get_node("LineEdit").set_cursor_position( history[ history_idx -1 ].length() )
-		#print(history_idx)
 
 
 
@@ -203,34 +225,82 @@ func _on_LineEdit_text_entered(text):
 # \___\___/|_| |_|____| .__/|_|  |_|_| |_|\__|
 #               |_____|_|                     
 
-func con_print(text, echo=true):
-	console_text.append_bbcode(str(text) + "\n")
-	if echo:
-		print(text)
+func _ansi_print(color, text):
+	print("%s%s%s" % [color, text, ANSI_RESET])
 
 
-func con_print_ok(text):
-	# green text
-	console_text.append_bbcode("[color=green][OK]    -- " + str(text) + "[/color]\n")
-	print(text)
+const _ANSI_RGB = char(0x1B) + "[38;2;%d;%d;%dm"
+const _ANSI_RESET = char(0x1B) + "[0m"
+
+const _ansi_debug = false
+func _ansi_print2(text: String):
+	
+	var offset = 0
+	var ansi = text
+	
+	while true:
+		offset = ansi.findn('[color=', offset)
+		
+		if offset == -1:
+			break
+		
+		var end = ansi.findn(']', offset)
+		var sub = ansi.substr(offset, end-offset+1)
+		
+		if sub[7] == '#':
+			var _color = ansi.substr(offset + 7, end-7)
+			var _c = Color(_color)
+			var _ansi_color = _ANSI_RGB % [_c.r8, _c.g8, _c.b8]
+			ansi = ansi.replace(sub, _ansi_color)
+			
+			if _ansi_debug:
+				print("sub[%d..%d]: %s" % [offset, end, sub])
+				print("colorname: %s" % [_color])
+				print("color: %02x%02x%02x" % [_c.r8, _c.g8, _c.b8])
+		else:
+			var _color = ansi.substr(offset + 7, end-7)
+			var _c = ColorN(_color)
+			var _ansi_color = _ANSI_RGB % [_c.r8, _c.g8, _c.b8]
+			ansi = ansi.replace(sub, _ansi_color)
+			
+			if _ansi_debug:
+				print("sub[%d..%d]: %s" % [offset, end, sub])
+				print("colorname: %s" % [_color])
+				print("color: %02x%02x%02x" % [_c.r8, _c.g8, _c.b8])
+			
+		offset +=1
+	
+	ansi = ansi.replace("[/color]", _ANSI_RESET)
+	print(ansi)
+
+func con_print(text : String, echo=true):
+	_ansi_print2(text)
+	
+	if not text.ends_with('\n'):
+		text += '\n'
+		
+	$ConsoleText.append_bbcode(text)
 
 
-func con_print_warn(text):
+func con_print_ok(text : String):
+	# lime text
+	con_print("[color=lime][OK]    -- %s[/color]" % text)
+
+
+func con_print_warn(text : String):
 	# yellow text
-	console_text.append_bbcode("[color=yellow][WARN]  -- " + str(text) + "[/color]\n")
-	print(text)
+	con_print("[color=yellow][WARN]  -- %s[/color]" % text)
 
 
 func con_print_error(text):
 	# red text
-	console_text.append_bbcode("[color=#ff4444][ERROR] -- " + str(text) + "[/color]\n")
-	print(text)
+	con_print("[color=red][ERROR] -- %s[/color]" % str(text))
 
 
 func con_print_array(arr):
 	for entry in arr:
-		console_text.append_bbcode(str(entry) + "\n")
-		print(entry)
+		con_print(str(entry))
+
 
 var _progress_thread
 var _progress_timer
@@ -311,10 +381,12 @@ func _describe_command(cmd, echo=true):
 	var description = command.description
 	var args = command.args
 	var num_args = command.num_args
+	
 	if num_args >= 1:
 		con_print("[color=#ffff66]" + cmd + ":[/color] " + description + " [color=#88ffff](usage: " + cmd + " " + args + ")[/color]", echo)
 	else:
 		con_print("[color=#ffff66]" + cmd + ":[/color] " + description + " [color=#88ffff](usage: " + cmd + ")[/color]", echo)
+
 
 
 # Describes a cvar, used by the "cvarlist" command and when the user enters a cvar name without any arguments
@@ -324,14 +396,13 @@ func _describe_cvar(cvar, echo=true):
 	var type = cvariable.type
 	var default_value = cvariable.default_value
 	var value = cvariable.value
+	
 	if type == "str":
 		con_print("[color=#88ff88]" + str(cvar) + ":[/color] [color=#9999ff]\"" + str(value) + "\"[/color]  " + str(description) + " [color=#ff88ff](default: \"" + str(default_value) + "\")[/color]", echo)
 	else:
 		var min_value = cvariable.min_value
 		var max_value = cvariable.max_value
 		con_print("[color=#88ff88]" + str(cvar) + ":[/color] [color=#9999ff]" + str(value) + "[/color]  " + str(description) + " [color=#ff88ff](" + str(min_value) + ".." + str(max_value) + ", default: " + str(default_value) + ")[/color]", echo)
-
-
 
 # _        _                                 _      _   _             
 #| |_ __ _| |__     ___ ___  _ __ ___  _ __ | | ___| |_(_) ___  _ __  
@@ -511,8 +582,9 @@ func _handle_command(text):
 	# Check if the first word is a valid command
 	if commands.has(cmd[0]):
 		var command = commands[cmd[0]]
-		print("] " + text)
+		
 		con_print("[b]] " + text + "[/b]", false)
+		
 		# If no argument is supplied, then show command description and usage, but only if command has at least 1 argument required
 		if cmd.size() == 1 and not command.num_args == 0:
 			_describe_command(cmd[0])
@@ -529,17 +601,23 @@ func _handle_command(text):
 		_handle_cvar(text, cmd)
 	else:
 		# Treat unknown commands as unknown
-		con_print("[b]] " + text + "[/b]")
-		#con_print("[i][color=#ff8888]Unknown command or cvar: " + cmd[0] + "[/color][/i]")
-		con_print_error("[i]Unknown command or cvar: " + cmd[0] + "[/i]")
+		con_print_error("Unknown command or cvar: " + cmd[0])
+		
 	get_node("LineEdit").clear()
 	history_idx = 0
 
 
 func _handle_cvar(text, cmd):
 	var cvar = cvars[cmd[0]]
-	print("] " + text)
+	#$ConsoleText.push_color(Color.blueviolet)
 	con_print("[b]] " + text + "[/b]")
+	if ansi:
+		var s = ANSI_BOLD
+		s += "] " + text
+		s += ANSI_RESET
+		print(s)
+	else:
+		print("] " + text)
 	# If no argument is supplied, then show cvar description and usage
 	if cmd.size() == 1:
 		_describe_cvar(cmd[0])
@@ -605,7 +683,7 @@ func load_config():
 func _register_commands():
 	register_command("echo", {
 		node = self,
-	description = "Prints a string in console.",
+		description = "Prints a string in console.",
 		args = "<string>",
 		num_args = 1
 	})
@@ -824,7 +902,6 @@ func _confunc_config_load():
 				
 				continue
 			
-			
 			var keys = cfg.get_section_keys(section)
 			
 			for key in keys:
@@ -979,7 +1056,14 @@ func _register_cvars():
 		min_value = 0,
 		max_value = 1
 	})
-
+	register_cvar("console_ansi_color", {
+		node = self,
+		description = "Activates/Deactivates ANSI color support for the terminal output.",
+		type = "int",
+		default_value = 1,
+		min_value = 0,
+		max_value = 1
+	})
 
 
 #                             __                  _   _                 
@@ -1041,7 +1125,6 @@ func _convar_console_show(value):
 		set_console_opened(true)
 		
 
-
 # Console -- history autosave
 func _convar_console_history_autosave(value):
 	pass
@@ -1051,4 +1134,11 @@ func _convar_console_history_autosave(value):
 func _convar_console_history_autoload(value):
 	pass
 
-
+# Console -- ansi terminal color support
+func _convar_console_ansi_color(value):
+	if value == 1:
+		if OS.has_environment("TERM"):
+			if OS.get_environment("TERM") == "xterm-256color":
+				ansi = true
+	else:
+		ansi = false

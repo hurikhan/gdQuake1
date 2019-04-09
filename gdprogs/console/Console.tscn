@@ -77,6 +77,7 @@ custom_fonts/bold_italics_font = SubResource( 3 )
 custom_fonts/italics_font = SubResource( 4 )
 custom_fonts/bold_font = SubResource( 5 )
 custom_fonts/normal_font = SubResource( 6 )
+scroll_following = true
 selection_enabled = true
 
 [node name="AnimationPlayer" type="AnimationPlayer" parent="."]
