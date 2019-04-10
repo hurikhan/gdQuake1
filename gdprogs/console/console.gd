@@ -280,6 +280,18 @@ func _ansi_print(text: String, echo : bool):
 	print(ansi)
 
 
+func con_print_image(image):
+	var size = image.get_size()
+	var cvar_scale = get_cvar("console_print_image_scale")
+	size.x = int(size.x * cvar_scale)
+	size.y = int(size.y * cvar_scale)
+	image.resize(size.x, size.y)
+	var tex = ImageTexture.new()
+	tex.create_from_image(image)
+	$ConsoleText.add_image(tex)
+	$ConsoleText.newline()
+
+
 func con_print(text : String, echo=true):
 	_ansi_print(text, echo)
 	
@@ -1161,6 +1173,14 @@ func _register_cvars():
 		min_value = 0,
 		max_value = 1
 	})
+	register_cvar("console_print_image_scale", {
+		node = self,
+		description = "Sets the scale for images, which are printed trought con_print_image().",
+		type = "float",
+		default_value = 2.0,
+		min_value = 0.0,
+		max_value = 100.0
+	})
 
 
 #                             __                  _   _                 
@@ -1239,6 +1259,11 @@ func _convar_console_ansi_color(value):
 				ansi_support = true
 	else:
 		ansi_support = false
+
+
+# Console -- con_print_image() scale factor
+func _convar_console_print_image_scale(value):
+	pass
 
 
 #     _          _ _                      _     
