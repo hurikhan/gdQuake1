@@ -31,17 +31,7 @@ const CONSOLE_STATE_OPENED = 0
 const CONSOLE_STATE_FADING = 1
 const CONSOLE_STATE_CLOSED = 2
 
-var ansi = false
-var ANSI_BOLD = char(0x1B) + "[1;1m"
-var ANSI_RED = char(0x1B) + "[1;31m"
-var ANSI_GREEN = char(0x1B) + "[1;32m"
-var ANSI_YELLOW = char(0x1B) + "[1;33m"
-var ANSI_BLUE = char(0x1B) + "[1;34m"
-var ANSI_MAGENTA = char(0x1B) + "[1;35m"
-var ANSI_AQUAMARINE = char(0x1B) + "[1;96m"
-var ANSI_RESET = char(0x1B) + "[0m"
-
-
+var ansi_support = false
 
 var state = CONSOLE_STATE_CLOSED
 var busy = false
@@ -73,7 +63,7 @@ func _ready():
 	
 	if OS.has_environment("TERM"):
 		if OS.get_environment("TERM") == "xterm-256color":
-			ansi = true
+			ansi_support = true
 
 #      _                   _   
 #     (_)_ __  _ __  _   _| |_ 
@@ -225,18 +215,15 @@ func _on_LineEdit_text_entered(text):
 # \___\___/|_| |_|____| .__/|_|  |_|_| |_|\__|
 #               |_____|_|                     
 
-func _ansi_print(color, text):
-	print("%s%s%s" % [color, text, ANSI_RESET])
-
 
 const _ANSI_RGB = char(0x1B) + "[38;2;%d;%d;%dm"
+const _ANSI_BOLD = char(0x1B) + "[1m"
 const _ANSI_RESET = char(0x1B) + "[0m"
 
 const _ansi_debug = false
-func _ansi_print2(text: String):
-	
-	var offset = 0
+func _ansi_print(text: String, echo : bool):
 	var ansi = text
+	var offset = 0
 	
 	while true:
 		offset = ansi.findn('[color=', offset)
@@ -247,34 +234,52 @@ func _ansi_print2(text: String):
 		var end = ansi.findn(']', offset)
 		var sub = ansi.substr(offset, end-offset+1)
 		
+		# html color e.g.: "[color=#FFFFFF]"
 		if sub[7] == '#':
-			var _color = ansi.substr(offset + 7, end-7)
-			var _c = Color(_color)
-			var _ansi_color = _ANSI_RGB % [_c.r8, _c.g8, _c.b8]
-			ansi = ansi.replace(sub, _ansi_color)
+			var _colorhtml = ansi.substr(offset + 7, end-offset-7)
+			if ansi_support:
+				var _c = Color(_colorhtml)
+				var _ansi_color = _ANSI_RGB % [_c.r8, _c.g8, _c.b8]
+				ansi = ansi.replace(sub, _ansi_color)
+				
+				if _ansi_debug:
+					print("sub[%d..%d]: %s" % [offset, end, sub])
+					print("colorhtml: %s" % [_colorhtml])
+					print("color: %02x%02x%02x" % [_c.r8, _c.g8, _c.b8])
+			else:
+				ansi = ansi.replace(sub, "")
 			
-			if _ansi_debug:
-				print("sub[%d..%d]: %s" % [offset, end, sub])
-				print("colorname: %s" % [_color])
-				print("color: %02x%02x%02x" % [_c.r8, _c.g8, _c.b8])
+		# named color e.g.: "[color=white]"
 		else:
-			var _color = ansi.substr(offset + 7, end-7)
-			var _c = ColorN(_color)
-			var _ansi_color = _ANSI_RGB % [_c.r8, _c.g8, _c.b8]
-			ansi = ansi.replace(sub, _ansi_color)
-			
-			if _ansi_debug:
-				print("sub[%d..%d]: %s" % [offset, end, sub])
-				print("colorname: %s" % [_color])
-				print("color: %02x%02x%02x" % [_c.r8, _c.g8, _c.b8])
-			
+			var _colorname = ansi.substr(offset + 7, end-offset-7)
+			if ansi_support:
+				var _c = ColorN(_colorname)
+				var _ansi_color = _ANSI_RGB % [_c.r8, _c.g8, _c.b8]
+				ansi = ansi.replace(sub, _ansi_color)
+				
+				if _ansi_debug:
+					print("sub[%d..%d]: %s" % [offset, end, sub])
+					print("colorname: %s" % [_colorname])
+					print("color: %02x%02x%02x" % [_c.r8, _c.g8, _c.b8])
+			else:
+				ansi = ansi.replace(sub, "")
+		
 		offset +=1
 	
-	ansi = ansi.replace("[/color]", _ANSI_RESET)
+	if ansi_support:
+		ansi = ansi.replace("[b]", _ANSI_BOLD)
+		ansi = ansi.replace("[/b]", _ANSI_RESET)
+		ansi = ansi.replace("[/color]", _ANSI_RESET)
+	else:
+		ansi = ansi.replace("[b]", "")
+		ansi = ansi.replace("[/b]", "")
+		ansi = ansi.replace("[/color]", "")
+	
 	print(ansi)
 
+
 func con_print(text : String, echo=true):
-	_ansi_print2(text)
+	_ansi_print(text, echo)
 	
 	if not text.ends_with('\n'):
 		text += '\n'
@@ -611,13 +616,7 @@ func _handle_cvar(text, cmd):
 	var cvar = cvars[cmd[0]]
 	#$ConsoleText.push_color(Color.blueviolet)
 	con_print("[b]] " + text + "[/b]")
-	if ansi:
-		var s = ANSI_BOLD
-		s += "] " + text
-		s += ANSI_RESET
-		print(s)
-	else:
-		print("] " + text)
+
 	# If no argument is supplied, then show cvar description and usage
 	if cmd.size() == 1:
 		_describe_cvar(cmd[0])
@@ -1139,6 +1138,6 @@ func _convar_console_ansi_color(value):
 	if value == 1:
 		if OS.has_environment("TERM"):
 			if OS.get_environment("TERM") == "xterm-256color":
-				ansi = true
+				ansi_support = true
 	else:
-		ansi = false
+		ansi_support = false
