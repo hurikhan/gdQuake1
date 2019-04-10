@@ -3,9 +3,7 @@ extends Node
 enum {T_VEC3, T_U8, T_U16, T_U32, T_F32, T_STRING, T_I16, T_I32 }
 enum {RETURN_AS_DICT, RETURN_AS_ARRAY, RETURN_UNWRAPPED}
 
-
 var parsers = Dictionary()
-
 
 func create(name):
 	var p = Parser_v2.new()
@@ -20,9 +18,8 @@ class Parser_v2:
 	var current_entries = Dictionary()
 	var current_offset = 0
 	var eval_mode = RETURN_AS_DICT
-	var aux_mod = Aux.new()
-	
-	
+	var raw = Raw.new()
+
 	func set_eval_mode(mode):
 		self.eval_mode = mode
 
@@ -78,35 +75,35 @@ class Parser_v2:
 		else:
 			match type:
 				T_U32:
-					var ret = aux.get_u32(data, start + self.current_offset)
+					var ret = raw.get_u32(data, start + self.current_offset)
 					self.current_offset += get_type_size(T_U32)
 					return ret
 				T_VEC3:
-					var ret = aux_mod.get_vec(data, start + self.current_offset)
+					var ret = raw.get_vec(data, start + self.current_offset)
 					self.current_offset += get_type_size(T_VEC3)
 					return ret
 				T_F32:
-					var ret = aux_mod.get_f32(data, start + self.current_offset)
+					var ret = raw.get_f32(data, start + self.current_offset)
 					self.current_offset += get_type_size(T_F32)
 					return ret
 				T_U8:
-					var ret = aux.get_u8(data, start + self.current_offset)
+					var ret = raw.get_u8(data, start + self.current_offset)
 					self.current_offset += get_type_size(T_U8)
 					return ret
 				T_U16:
-					var ret = aux.get_u16(data, start + self.current_offset)
+					var ret = raw.get_u16(data, start + self.current_offset)
 					self.current_offset += get_type_size(T_U16)
 					return ret
 				T_STRING:
-					var ret = aux.get_string(data, start + self.current_offset, count)
+					var ret = raw.get_string(data, start + self.current_offset, count)
 					self.current_offset += count
 					return ret
 				T_I16:
-					var ret = aux.get_i16(data, start + self.current_offset)
+					var ret = raw.get_i16(data, start + self.current_offset)
 					self.current_offset += get_type_size(T_I16)
 					return ret
 				T_I32:
-					var ret = aux.get_i32(data, start + self.current_offset)
+					var ret = raw.get_i32(data, start + self.current_offset)
 					self.current_offset += get_type_size(T_I32)
 					return ret
 
