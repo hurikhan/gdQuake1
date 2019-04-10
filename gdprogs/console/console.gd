@@ -314,34 +314,45 @@ var _progress_status_func
 var _progress_status_firstcall = false
 var _progress_status_text = ""
 
+enum {STATUS_INIT, STATUS_PROGRESS, STATUS_FINISHED}
+
 func _con_progress_status():
-	_progress_status_text = "Downloading... %3d%%\n"
 	
-	var percent = int(_progress_status_node.call(_progress_status_func) * 100)
-	var status_text = _progress_status_text % percent
+	var ret = _progress_status_node.call(_progress_status_func)
+	var status = ret[0]
+	var msg = ret[1]
 	
-	if _progress_status_firstcall == true:
-		console_text.append_bbcode(status_text)
-		_progress_status_firstcall = false
-		return
-	else:
-		console_text.remove_line(console_text.get_line_count() - 1)
-		console_text.update()
-		console_text.append_bbcode(status_text)
-		console_text.update()
-		pass
-	
-	if percent >= 100:
-		_progress_timer.autostart = false
-		_progress_timer.stop()
-	
+	match status:
+		STATUS_INIT:
+			if _progress_status_firstcall == true:
+				con_print(msg)
+				_progress_status_firstcall = false
+		
+		STATUS_PROGRESS:
+			console_text.remove_line(console_text.get_line_count() - 1)
+			console_text.update()
+			con_print(msg)
+			console_text.update()
+		
+		STATUS_FINISHED:
+			_progress_timer.autostart = false
+			_progress_timer.stop()
+			_progress_thread.wait_to_finish()
+			
+			if typeof(msg) == TYPE_ARRAY:
+				console_text.remove_line(console_text.get_line_count() - 1)
+				console_text.update()
+				con_print(msg[0])
+				console_text.update()
+				con_print_ok(msg[1])
+			else:
+				console.con_print_ok(msg)
+
 
 func con_progress(thread_node, thread_func, thread_parameter, status_func):
 		_progress_thread = Thread.new()
 		
 		var err = _progress_thread.start(thread_node, thread_func, thread_parameter)
-		
-		print(err)
 		
 		if err == 0:
 			_progress_status_node = thread_node
