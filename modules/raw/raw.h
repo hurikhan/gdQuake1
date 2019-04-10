@@ -3,11 +3,11 @@
 #ifndef RAW_H
 #define RAW_H
 
-#include "core/object.h"
+#include "core/reference.h"
 
 
-class Raw : public Object {
-	GDCLASS(Raw, Object);
+class Raw : public Reference {
+	GDCLASS(Raw, Reference);
 
 private:
 
