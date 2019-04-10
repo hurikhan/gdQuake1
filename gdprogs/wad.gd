@@ -1,12 +1,14 @@
 extends Node
 
+onready var raw = Raw.new()
+
 var status_bar = Dictionary()
 var mip_texture = Dictionary()
 
 
 func _load_status_bar(data, offset, size, name):
-	var w = aux.get_u32(data, offset)
-	var h = aux.get_u32(data, offset+4)
+	var w = raw.get_u32(data, offset)
+	var h = raw.get_u32(data, offset+4)
 	
 #	print(name, " ", w, " ", h)	
 #	print(offset, " ", size)
@@ -35,13 +37,13 @@ func _get_wad_entry(data, offset, number):
 	
 	var _offset = offset + (number * 32)
 	
-	var entry_offset = aux.get_u32(data, _offset)
-	var entry_dsize = aux.get_u32(data, _offset+4)
-	var entry_size = aux.get_u32(data, _offset+8)
+	var entry_offset = raw.get_u32(data, _offset)
+	var entry_dsize = raw.get_u32(data, _offset+4)
+	var entry_size = raw.get_u32(data, _offset+8)
 	var entry_type = char(data[_offset+12])
 	var entry_cmprs = data[_offset+13]
-	var entry_dummy = aux.get_u16(data, _offset+14)
-	var entry_name = aux.get_string(data, _offset+16, 16)
+	var entry_dummy = raw.get_u16(data, _offset+14)
+	var entry_name = raw.get_string(data, _offset+16, 16)
 	
 #	print("wad_entry --------------------------------")
 #	print("wad_entry_offset: ", entry_offset)
@@ -73,8 +75,8 @@ func load_wad(filename):
 	
 	print("wad_header_id: ", id)
 	
-	var header_entries = aux.get_u32(data, 4)
-	var header_offset = aux.get_u32(data, 8)
+	var header_entries = raw.get_u32(data, 4)
+	var header_offset = raw.get_u32(data, 8)
 	
 	print("wad_header_entries: ", header_entries)
 	print("wad_header_offset: ", header_offset)
