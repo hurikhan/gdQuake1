@@ -24,7 +24,6 @@ config/icon="res://icon.png"
 [autoload]
 
 console="*res://console/Console.tscn"
-aux="*res://aux.gd"
 pak="*res://pak.gd"
 pallete="*res://pallete.gd"
 lmp="*res://lmp.gd"

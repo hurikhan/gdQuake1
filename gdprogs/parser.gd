@@ -25,7 +25,7 @@ class Parser:
 	var name
 	var debug_level
 	var e = Array()	
-	var aux = Aux.new()
+	var raw = Raw.new()
 	
 	
 	func _get_string(data, offset, _max):
@@ -56,12 +56,12 @@ class Parser:
 
 	
 	func _get_vec(data, offset):
-		var ret = aux.get_vec(data, offset)
+		var ret = raw.get_vec(data, offset)
 		return ret
 	
 	
 	func _get_f32(data, offset):
-		var ret = aux.get_f32(data, offset)
+		var ret = raw.get_f32(data, offset)
 		return ret
 	
 	
