@@ -1,20 +1,10 @@
 extends Node
 
-var thread = null
-var thread_map = null
-var thread_status = 0
-var thread_status_label = ""
-var thread_filename = ""
-var thread_timer = null
-var start = 0
-var end = 0
+var map = Dictionary()
+var map_loaded = false
+var raw = Raw.new()
 
-
-
-func load_bsp(filename):
-	
-	thread_status = 1
-	
+func load_map(filename):
 	var bsp_file = File.new()
 	bsp_file.open("user://data/" + filename, bsp_file.READ)
 	var data = bsp_file.get_buffer(bsp_file.get_len())
@@ -218,41 +208,35 @@ func load_bsp(filename):
 	# eval 
 	# -----------------------------------------------------	
 	
-	var bsp = Dictionary()
+	var _map = Dictionary()
 	
 	var header = _get_header(data, dheader_t)
 	
-	bsp.header = header
+	_map.header = header
 	
-	bsp.entities = _get_entities(data, header)
-	bsp.planes = _get_entries(data, header.planes, plane_t)
-	bsp.miptexs = _get_miptexs(data, header, mipheader_t, miptex_t)
-	bsp.vertices = _get_entries(data, header.vertices, vertex_t)
-	bsp.visilist = _get_entries(data, header.visilist, visilist_t)
-	bsp.nodes = _get_entries(data, header.nodes, node_t)
-	bsp.texinfos = _get_entries(data, header.texinfo, texinfo_t)
-	bsp.faces = _get_entries(data, header.faces, face_t)
-	bsp.lightmaps = _get_entries(data, header.lightmaps, lightmap_t)
-	bsp.clipnodes = _get_entries(data, header.clipnodes, clipnode_t)
-	bsp.leaves = _get_entries(data, header.leaves, dleaf_t)
-	bsp.lfaces = _get_entries(data, header.lfaces, lface_t)
-	bsp.edges = _get_entries(data, header.edges, edge_t)
-	bsp.ledges = _get_entries(data, header.ledges, ledge_t)
-	bsp.models = _get_entries(data, header.models, model_t)
+	_map.entities = _get_entities(data, header)
+	_map.planes = _get_entries(data, header.planes, plane_t)
+	_map.miptexs = _get_miptexs(data, header, mipheader_t, miptex_t)
+	_map.vertices = _get_entries(data, header.vertices, vertex_t)
+	_map.visilist = _get_entries(data, header.visilist, visilist_t)
+	_map.nodes = _get_entries(data, header.nodes, node_t)
+	_map.texinfos = _get_entries(data, header.texinfo, texinfo_t)
+	_map.faces = _get_entries(data, header.faces, face_t)
+	_map.lightmaps = _get_entries(data, header.lightmaps, lightmap_t)
+	_map.clipnodes = _get_entries(data, header.clipnodes, clipnode_t)
+	_map.leaves = _get_entries(data, header.leaves, dleaf_t)
+	_map.lfaces = _get_entries(data, header.lfaces, lface_t)
+	_map.edges = _get_entries(data, header.edges, edge_t)
+	_map.ledges = _get_entries(data, header.ledges, ledge_t)
+	_map.models = _get_entries(data, header.models, model_t)
 	
-	bsp.filename = filename
-	
-	thread_map = bsp
-	thread_status = 100
-	
-#	return bsp
+	_map.filename = filename
+	_map.valid = true
 
-
+	map = _map
+	map_loaded = true
 
 func _get_header(data, struct):
-	
-	thread_status += 1
-	
 	var header = struct.eval(data, 0)
 	for i in header:
 		print(i, " ",header[i])
@@ -261,9 +245,6 @@ func _get_header(data, struct):
 
 
 func _get_entries(data, dir, struct):
-	
-	thread_status +=1
-	
 	var arr = Array()
 	var struct_size = struct.get_size()
 	
@@ -277,11 +258,8 @@ func _get_entries(data, dir, struct):
 
 
 func _get_entities(data, header):
-	
-	thread_status +=1
-	
 	var entities = Array()
-	var s : String = aux.get_string(data, header.entities.offset, header.entities.size)
+	var s : String = raw.get_string(data, header.entities.offset, header.entities.size)
 	var entries = s.split("{")
 	
 	for e in entries:
@@ -312,9 +290,6 @@ func _get_entities(data, header):
 
 
 func _get_miptexs(data, header, mipheader_t, miptex_t):
-	
-	thread_status +=1
-	
 	var mipheader = mipheader_t.eval(data, header.miptex.offset)
 	
 	var miptexs = Array()
@@ -331,8 +306,6 @@ func _get_miptexs(data, header, mipheader_t, miptex_t):
 	return miptexs
 
 # ----------------------------------------------------------------------
-
-
 
 func _get_triangles(polygon, normal, texinfo, miptex):
 	
@@ -370,9 +343,6 @@ func _get_bbox(polygon, normal):
 
 
 func _get_node(map, model_index):
-	
-	thread_status = 101
-	
 	var model = map.models[model_index]
 	var faces = map.faces
 	var ledges = map.ledges
@@ -462,14 +432,11 @@ func _get_node(map, model_index):
 		origin.add_child(mi)
 		mi.set_owner(origin)
 	
-	thread_status = 200
-	
 	return origin
 
 
 
 func _get_tex(map, index):
-	
 	var data = map.miptexs[index].raw_tex1
 	var w = map.miptexs[index].width
 	var h = map.miptexs[index].height
@@ -489,163 +456,98 @@ func _get_tex(map, index):
 	return tex
 
 
-
-func _load_map_sequencer():
-	
-	if thread_status != 0:
-		var percent = thread_status /float(17) * 100.0
-		$"/root/console/ProgressBar".set_value(percent)
-		
-		match thread_status:
-			1:	thread_status_label = "parsing bsp file"
-			2:	thread_status_label = "header"
-			3:	thread_status_label = "entities"
-			4:	thread_status_label = "planes"
-			5:	thread_status_label = "miptexs"
-			6:	thread_status_label = "vertices"
-			7:	thread_status_label = "visilist"
-			8:	thread_status_label = "nodes"
-			9:	thread_status_label = "entities"
-			10:	thread_status_label = "faces"
-			11:	thread_status_label = "clipnodes"
-			12:	thread_status_label = "leaves"
-			13:	thread_status_label = "lfaces"
-			14:	thread_status_label = "edges"
-			15:	thread_status_label = "ledges"
-			16:	thread_status_label = "models"
-			101:thread_status_label = "generating meshes"
-	
-		$"/root/console/ProgressBar/Label".set_text(thread_status_label)
-	
-	
-	if thread_status == 0:
-		
-		start = OS.get_ticks_msec()
-		
-		thread_map = null
-		$"/root/console/ProgressBar".set_value(0)
-		
-		thread = Thread.new()
-		var err = thread.start(self, "load_bsp", thread_filename)
-		
-		if thread_timer == null:
-			thread_timer = Timer.new()
-			thread_timer.set_wait_time(0.01)
-			thread_timer.connect("timeout", self, "_thread_timer")
-			add_child(thread_timer)
-		thread_timer.start()
-	
-	
-	if thread_status == 100:
-		
-		end = OS.get_ticks_msec()
-		console.con_print_ok("Parsed bsp entries in %s ms." % str(end-start))
-		start = OS.get_ticks_msec()
-		
-		thread.wait_to_finish()
-		var level = _get_node(thread_map, 0 )
-		level.set_name("map")
-		level.set_rotation_degrees(Vector3(-90,0,0))
-		
-		var world = $"/root/world/"
-		
-		if world.has_node("map"):
-			world.remove_child($"/root/world/map")
-		
-		world.add_child(level)
-	
-	
-	if thread_status == 200:
-		end = OS.get_ticks_msec()
-		console.con_print_ok("Generated models and textures in %s ms." % str(end-start))
-		thread_timer.stop()
-		thread_status = 0
-		$"/root/console/ProgressBar/Label".set_text("")
-
-
-
-func _thread_timer():
-	_load_map_sequencer()
-
-
 func _ready():
-	console.register_command("bsp_map", {
+	console.register_command("map", {
 		node = self,
 		description = "Loads a bsp map.",
 		args = "<Filename>",
 		num_args = 1
 	})
-	console.register_command("bsp_entity_list", {
+	console.register_command("map_info", {
 		node = self,
-		description = "Lists the entities with the specified classname",
-		args = "<Classname>",
+		description = "Info about bsp entries.",
+		args = "<entry>",
 		num_args = 1
 	})
-	console.register_command("bsp_entity_show", {
-		node = self,
-		description = "Shows the entities with the specified classname",
-		args = "<Classname>",
-		num_args = 1
-	})
+#	console.register_command("bsp_entity_list", {
+#		node = self,
+#		description = "Lists the entities with the specified classname",
+#		args = "<Classname>",
+#		num_args = 1
+#	})
+#	console.register_command("bsp_entity_show", {
+#		node = self,
+#		description = "Shows the entities with the specified classname",
+#		args = "<Classname>",
+#		num_args = 1
+#	})
 
 
-func _load_icon(name, caption = "Caption!", text = ""):
-	var scene = preload("res://gfx/icons/Icon.tscn").instance()
-	scene.set_rotation_degrees(Vector3(90,0,0))
-	
-	scene.get_node("Viewport/IconText/Caption").set_text(caption)
-	scene.get_node("Viewport/IconText/Text").set_text(text)
-		
-	return scene
+func _confunc_map(args):
+	load_map("maps/%s" % args[1])
+	console.con_print_ok("maps/%s loaded." % args[1])
 
 
-func _confunc_bsp_map(args):
-	thread_status = 0
-	thread_filename = "maps/" + args[1]
-	_load_map_sequencer()
+func _confunc_map_info(args):
+	if map_loaded:
+		if args[1] == "entities":
+			for e in map.entities:
+				console.con_print(e)
+	else:
+		console.con_print_warn("No map loaded!")
 
 
-func _confunc_bsp_entity_list(args):
-	
-	var num = 0
-	
-	for i in thread_map.entities:
-		if args[1] != "":
-			if i["classname"] == args[1]:
-				console.con_print(str(num) + ":" + str(i))
-		else:
-			console.con_print(str(num) + ":" + str(i))
-		
-		num += 1
+#func _load_icon(name, caption = "Caption!", text = ""):
+#	var scene = preload("res://gfx/icons/Icon.tscn").instance()
+#	scene.set_rotation_degrees(Vector3(90,0,0))
+#
+#	scene.get_node("Viewport/IconText/Caption").set_text(caption)
+#	scene.get_node("Viewport/IconText/Text").set_text(text)
+#
+#	return scene
 
 
-func _confunc_bsp_entity_show(args):
-	
-	var icons_node = $"/root/world/icons"
-	var index_num = 0
-	var light_num = 0
-	
-	for i in thread_map.entities:
-		
-		if i["classname"] == args[1]:
-			if i["classname"] == "light":
-				
-				var xyz = i["origin"].split(" ")
-				var x = float(xyz[0])
-				var y = float(xyz[1])
-				var z = float(xyz[2])
-				var origin = Vector3(x, y, z)
-				
-				var icon = _load_icon("sun", "[" + str(index_num) + "] light" + str(light_num))
-				icon.set_translation(origin)
-				icons_node.add_child(icon)
-				
-				var light = OmniLight.new()
-				light.set_translation(origin)
-				light.omni_range = 1000
-				light.light_energy = 3
-				icons_node.add_child(light)
-				
-				light_num += 1
-		
-		index_num += 1
+#func _confunc_bsp_entity_list(args):
+#
+#	var num = 0
+#
+#	for i in thread_map.entities:
+#		if args[1] != "":
+#			if i["classname"] == args[1]:
+#				console.con_print(str(num) + ":" + str(i))
+#		else:
+#			console.con_print(str(num) + ":" + str(i))
+#
+#		num += 1
+
+
+#func _confunc_bsp_entity_show(args):
+#
+#	var icons_node = $"/root/world/icons"
+#	var index_num = 0
+#	var light_num = 0
+#
+#	for i in thread_map.entities:
+#
+#		if i["classname"] == args[1]:
+#			if i["classname"] == "light":
+#
+#				var xyz = i["origin"].split(" ")
+#				var x = float(xyz[0])
+#				var y = float(xyz[1])
+#				var z = float(xyz[2])
+#				var origin = Vector3(x, y, z)
+#
+#				var icon = _load_icon("sun", "[" + str(index_num) + "] light" + str(light_num))
+#				icon.set_translation(origin)
+#				icons_node.add_child(icon)
+#
+#				var light = OmniLight.new()
+#				light.set_translation(origin)
+#				light.omni_range = 1000
+#				light.light_energy = 3
+#				icons_node.add_child(light)
+#
+#				light_num += 1
+#
+#		index_num += 1
