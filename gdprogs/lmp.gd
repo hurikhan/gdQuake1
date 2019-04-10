@@ -2,6 +2,7 @@ extends Node
 
 var texture = Dictionary()
 
+onready var raw = Raw.new()
 
 func load_lmp(filename):
 	
@@ -14,8 +15,8 @@ func load_lmp(filename):
 		
 		print("lmp_file: ", filename)
 		
-		var w = aux.get_u32(data, 0)
-		var h = aux.get_u32(data, 4)
+		var w = raw.get_u32(data, 0)
+		var h = raw.get_u32(data, 4)
 		
 		print("lmp_width: ", w)
 		print("lmp_height: ", h)

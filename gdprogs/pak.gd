@@ -1,5 +1,6 @@
 extends Node
 
+onready var archive = preload("res://addons/gdarchive/gdarchive.gdns").new()
 onready var raw = Raw.new()
 var _req
 
@@ -8,7 +9,7 @@ func _get_pack_entry(data, offset, number):
 	var file_offset = raw.get_u32(data, offset+(64*number) + 56)
 	var file_size = raw.get_u32(data, offset+(64*number) + 60)
 	
-	var s = "pak_entry[%d]: %s %d %d" % [ number, file_name, file_offset, file_size]
+	var s = "pak_entry[%d]: %s [offset: %d size: %d]" % [ number, file_name, file_offset, file_size]
 	console.con_print(s)
 	
 	var sub = data.subarray(file_offset, file_offset + file_size-1)
@@ -25,11 +26,11 @@ func _get_pack_entry(data, offset, number):
 
 func load_pak(filename):
 	var pak = File.new()
-	pak.open("user://uncompressed/QUAKE_SW/ID1/" + filename, pak.READ)
+	pak.open("user://decompressed/QUAKE_SW/ID1/" + filename, pak.READ)
 	var data = pak.get_buffer(pak.get_len())
 		
-	print("pak_file: ", filename)
-	print("pak_size: ", data.size(), " bytes")
+	console.con_print("pak_file: %s" % filename)
+	console.con_print("pak_size: %s bytes" % data.size())
 	
 	var id = ""
 	id += char(raw.get_u8(data, 0))
@@ -37,7 +38,7 @@ func load_pak(filename):
 	id += char(raw.get_u8(data, 2))
 	id += char(raw.get_u8(data, 3))
 	
-	print("pak_header_id: ", id)
+	console.con_print("pak_header_id: %s" % id)
 	
 	if id != "PACK":
 		print("Not a PAK file!")
@@ -67,12 +68,13 @@ func _ready():
 		args = "",
 		num_args = 0
 	})
-	console.register_command("pak_uncompress", {
+	console.register_command("pak_decompress", {
 		node = self,
-		description = "Uncompresses the shareware PAK file.",
+		description = "Decompresses the shareware PAK file.",
 		args = "",
 		num_args = 0
 	})
+	
 
 
 func _confunc_pak_init():
@@ -108,15 +110,18 @@ func _confunc_pak_download():
 	console.con_progress(self, "_pak_download_thread", "", "_pak_download_status")
 
 
-func _confunc_pak_uncompress():
-	var archive = preload("res://addons/gdarchive/gdarchive.gdns").new()
+func _confunc_pak_decompress():
 	
-	print(archive.get_version())
-	print(archive.get_info())
-	print(archive.open("user://downloads/quake-shareware.tar.xz"))
-	#var files = archive.list()
-	#files = archive.list()
-	var files = archive.extract("user://uncompressed/")
-	print(archive.close())
+	var dir = Directory.new()
+	dir.make_dir_recursive("user://decompressed/")
+	dir = null
 	
-	#get_tree().quit()
+	if archive.open("user://downloads/quake-shareware.tar.xz"):
+		# TODO: investigate crash with archive.list() in gdArchive
+		#var files = archive.list()
+		archive.extract("user://decompressed/")
+		archive.close()
+		
+		console.con_print_ok("Files decompressed.")
+	else:
+		console.con_print_error("Could not open archive.")
