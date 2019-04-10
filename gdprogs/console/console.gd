@@ -112,9 +112,11 @@ func _input(event):
 		return
 	
 	if get_node("LineEdit").get_text() != "" and get_node("LineEdit").has_focus() and Input.is_key_pressed(KEY_TAB):
+		_tab_complete_args()
 		_tab_complete()
 		get_tree().set_input_as_handled()
 		return
+	
 	
 
 
@@ -285,6 +287,20 @@ func con_print(text : String, echo=true):
 		text += '\n'
 		
 	$ConsoleText.append_bbcode(text)
+
+var last_completion = 0
+
+func con_print_completion(lines : PoolStringArray):
+	
+	for i in range(0, last_completion):
+		$ConsoleText.remove_line($ConsoleText.get_line_count() - 1)
+	
+	$ConsoleText.update()
+	
+	for line in lines:
+		con_print(line)
+	
+	last_completion = lines.size()
 
 
 func con_print_ok(text : String):
@@ -498,6 +514,15 @@ func _tab_complete():
 		get_node("LineEdit").set_text(tab_complete_line)
 		get_node("LineEdit").set_cursor_position(tab_complete_line.length())
 
+
+func _tab_complete_args():
+	var text = $LineEdit.get_text()
+	var args = text.split(' ')
+	
+	if commands.has(args[0]):
+		var command = commands[args[0]]
+		if command.node.has_method("_confunc_%s_autocompletion" % args[0]):
+			command.node.call("_confunc_%s_autocompletion" % args[0], args)
 
 
 #                          _       
@@ -788,7 +813,13 @@ func _register_commands():
 		args = "",
 		num_args = 0
 	})
-
+	
+	register_command("ls", {
+		node = self,
+		description = "Lists the files in the current directory.",
+		args = "<directory>",
+		num_args = 1,
+	})
 
 
 #  ___ ___  _ __ ___  _ __ ___   __ _ _ __   __| |
@@ -1004,6 +1035,62 @@ func _confunc_console_history_load():
 		con_print_ok("user://history.txt loaded.")
 
 
+# [Autocompletion] Lists the files in the current directory.
+func _confunc_ls_autocompletion(args):
+	
+	var s1 = ""
+	var s2 = ""
+	
+	if args.size() == 1:
+		return
+	
+	s1 = args[1].get_base_dir()
+	s2 = args[1].get_file()
+	
+	if s1 != "":
+		s1 += '/'
+	
+	if args.size() > 1:
+		if not shell_has_dir("user://%s" % s1):
+			s1 = ""
+	
+	var dirs = shell_ls("user://%s" % s1)[0]
+	var found = []
+
+	for d in dirs:
+		if d.begins_with(s2):
+			found.push_back(d)
+	
+	if found.size() == 1:
+		var line = "%s %s/" % [args[0], s1 + found[0]]
+		$LineEdit.set_text(line)
+		$LineEdit.caret_position = line.length()
+		con_print_completion([""])
+	else:
+		var completion_text = []
+		for f in found:
+			completion_text.push_back("[color=#4040FF]%s[/color]/" % f)
+		con_print_completion(completion_text)
+
+
+# Lists the files in the current directory.
+func _confunc_ls(args):
+	var dir = Directory.new()
+	
+	var path = "user://"
+	
+	if args.size() > 1:
+		path = path + args[1]
+	
+	var ret = shell_ls(path)
+	var dirs = ret[0]
+	var files = ret[1]
+	
+	for d in dirs:
+		console.con_print("[color=#4040FF]%s[/color]/" % d)
+	
+	for f in files:
+		console.con_print(f)
 
 #                _     _                                       
 # _ __ ___  __ _(_)___| |_ ___ _ __    _____   ____ _ _ __ ___ 
@@ -1152,3 +1239,48 @@ func _convar_console_ansi_color(value):
 				ansi_support = true
 	else:
 		ansi_support = false
+
+
+#     _          _ _                      _     
+# ___| |__   ___| | |   ___ _ __ ___   __| |___ 
+#/ __| '_ \ / _ \ | |  / __| '_ ` _ \ / _` / __|
+#\__ \ | | |  __/ | | | (__| | | | | | (_| \__ \
+#|___/_| |_|\___|_|_|  \___|_| |_| |_|\__,_|___/
+                                               
+
+func shell_ls(path):
+	var dir = Directory.new()
+	
+	var dirs = []
+	var files = []
+	
+	if dir.open(path) == OK:
+		dir.list_dir_begin()
+		var filename = dir.get_next()
+		
+		while filename != "":
+			#console.con_print(filename)
+
+			if dir.current_is_dir():
+				if filename != "." and filename != "..":
+					dirs.push_back(filename)
+			else:
+					files.push_back(filename)
+				
+			filename = dir.get_next()
+		
+		dirs.sort()
+		files.sort()
+		
+		return [dirs, files]
+		
+	else:
+		console.con_print_error("Could not open %s directory." % path)
+
+
+func shell_has_dir(path):
+	var dir = Directory.new()
+	if dir.open(path) == OK:
+		return true
+	else:
+		return false
