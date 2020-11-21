@@ -38,7 +38,7 @@ singletons=[  ]
 
 [global]
 
-light=false
+light=true
 
 [input]
 
@@ -167,4 +167,4 @@ console_down={
 [rendering]
 
 threads/thread_model=2
-environment/default_environment="res://default_env.tres"
+environment/default_environment="res://env.tres"

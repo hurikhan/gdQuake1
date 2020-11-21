@@ -591,12 +591,12 @@ func _ready():
 #		args = "<Classname>",
 #		num_args = 1
 #	})
-#	console.register_command("bsp_entity_show", {
-#		node = self,
-#		description = "Shows the entities with the specified classname",
-#		args = "<Classname>",
-#		num_args = 1
-#	})
+	console.register_command("bsp_entity_show", {
+		node = self,
+		description = "Shows the entities with the specified classname",
+		args = "<Classname>",
+		num_args = 1
+	})
 
 
 func _confunc_map(args):
@@ -626,14 +626,14 @@ func _confunc_map_info(args):
 
 
 
-#func _load_icon(name, caption = "Caption!", text = ""):
-#	var scene = preload("res://gfx/icons/Icon.tscn").instance()
-#	scene.set_rotation_degrees(Vector3(90,0,0))
-#
-#	scene.get_node("Viewport/IconText/Caption").set_text(caption)
-#	scene.get_node("Viewport/IconText/Text").set_text(text)
-#
-#	return scene
+func _load_icon(name, caption = "Caption!", text = ""):
+	var scene = preload("res://gfx/icons/Icon.tscn").instance()
+	scene.set_rotation_degrees(Vector3(90,0,0))
+
+	#scene.get_node("Viewport/IconText/Caption").set_text(caption)
+	#scene.get_node("Viewport/IconText/Text").set_text(text)
+
+	return scene
 
 
 #func _confunc_bsp_entity_list(args):
@@ -650,33 +650,33 @@ func _confunc_map_info(args):
 #		num += 1
 
 
-#func _confunc_bsp_entity_show(args):
-#
-#	var icons_node = $"/root/world/icons"
-#	var index_num = 0
-#	var light_num = 0
-#
-#	for i in thread_map.entities:
-#
-#		if i["classname"] == args[1]:
-#			if i["classname"] == "light":
-#
-#				var xyz = i["origin"].split(" ")
-#				var x = float(xyz[0])
-#				var y = float(xyz[1])
-#				var z = float(xyz[2])
-#				var origin = Vector3(x, y, z)
-#
-#				var icon = _load_icon("sun", "[" + str(index_num) + "] light" + str(light_num))
-#				icon.set_translation(origin)
-#				icons_node.add_child(icon)
-#
+func _confunc_bsp_entity_show(args):
+
+	var icons_node = $"/root/world/icons"
+	var index_num = 0
+	var light_num = 0
+
+	for i in map.entities:
+
+		if i["classname"] == args[1]:
+			if i["classname"] == "light":
+
+				var xyz = i["origin"].split(" ")
+				var x = float(xyz[0])
+				var y = float(xyz[1])
+				var z = float(xyz[2])
+				var origin = Vector3(x, y, z)
+
+				var icon = _load_icon("sun", "[" + str(index_num) + "] light" + str(light_num))
+				icon.set_translation(origin)
+				icons_node.add_child(icon)
+
 #				var light = OmniLight.new()
 #				light.set_translation(origin)
 #				light.omni_range = 1000
 #				light.light_energy = 3
 #				icons_node.add_child(light)
-#
-#				light_num += 1
-#
-#		index_num += 1
+
+				light_num += 1
+
+		index_num += 1
