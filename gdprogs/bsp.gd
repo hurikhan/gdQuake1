@@ -1,240 +1,323 @@
 extends Node
 
+var bsp_meshes = Array()
+var bsp_textures = Dictionary()
+
 var map = Dictionary()
 var map_loaded = false
 var raw = Raw.new()
 
 func load_map(filename):
-	var bsp_file = File.new()
-	bsp_file.open("user://data/" + filename, bsp_file.READ)
-	var data = bsp_file.get_buffer(bsp_file.get_len())
 	
-	# -----------------------------------------------------
-	# dentry_t
-	# -----------------------------------------------------
-	var dentry_t = parser_v2.create("dentry_t")
-	dentry_t.add("offset",		parser_v2.T_U32	)
-	dentry_t.add("size",		parser_v2.T_U32	)
+	var _start = OS.get_ticks_msec()
+	var _end = 0
 	
-	# -----------------------------------------------------
-	# dheader_t
-	# -----------------------------------------------------
-	var dheader_t = parser_v2.create("dheader_t")
-	dheader_t.add("version",		parser_v2.T_U32	)
-	dheader_t.add("entities",		"dentry_t"		)
-	dheader_t.add("planes",			"dentry_t"		)
-	dheader_t.add("miptex",			"dentry_t"		)
-	dheader_t.add("vertices",		"dentry_t"		)
-	dheader_t.add("visilist",		"dentry_t"		)
-	dheader_t.add("nodes",			"dentry_t"		)
-	dheader_t.add("texinfo",		"dentry_t"		)
-	dheader_t.add("faces",			"dentry_t"		)
-	dheader_t.add("lightmaps",		"dentry_t"		)
-	dheader_t.add("clipnodes",		"dentry_t"		)
-	dheader_t.add("leaves",			"dentry_t"		)
-	dheader_t.add("lfaces",			"dentry_t"		)
-	dheader_t.add("edges",			"dentry_t"		)
-	dheader_t.add("ledges",			"dentry_t"		)
-	dheader_t.add("models",			"dentry_t"		)
+	var dir = Directory.new()
+	var path = "user://cache/" + filename + "/map.res"	
 	
-	
-	# -----------------------------------------------------
-	# vertex_t
-	# -----------------------------------------------------	
-	var vertex_t = parser_v2.create("vertex_t")
-	vertex_t.add("vec",		parser_v2.T_VEC3			)
-	# mode
-	vertex_t.set_eval_mode(parser_v2.RETURN_UNWRAPPED)
-	
-	# -----------------------------------------------------
-	# boundbox_t
-	# -----------------------------------------------------
-	var boundbox_t = parser_v2.create("boundbox_t")
-	boundbox_t.add("min",		parser_v2.T_VEC3	)
-	boundbox_t.add("max",		parser_v2.T_VEC3	)
-	
-	# -----------------------------------------------------
-	# bboxshort_t
-	# -----------------------------------------------------
-	var bboxshort_t = parser_v2.create("bboxshort_t")
-	bboxshort_t.add("min_x",		parser_v2.T_I16	)
-	bboxshort_t.add("min_y",		parser_v2.T_I16	)
-	bboxshort_t.add("min_z",		parser_v2.T_I16	)
-	bboxshort_t.add("max_x",		parser_v2.T_I16	)
-	bboxshort_t.add("max_y",		parser_v2.T_I16	)
-	bboxshort_t.add("max_z",		parser_v2.T_I16	)
-	
-	# -----------------------------------------------------
-	# model_t
-	# -----------------------------------------------------
-	var model_t = parser_v2.create("model_t")
-	model_t.add("bound",		"boundbox_t"		)
-	model_t.add("origin",		parser_v2.T_VEC3	)
-	model_t.add("node_id0",		parser_v2.T_U32		)
-	model_t.add("node_id1",		parser_v2.T_U32		)
-	model_t.add("node_id2",		parser_v2.T_U32		)
-	model_t.add("node_id3",		parser_v2.T_U32		)
-	model_t.add("numleafs",		parser_v2.T_U32		)
-	model_t.add("face_id",		parser_v2.T_U32		)
-	model_t.add("face_num",		parser_v2.T_U32		)
-	
-	# -----------------------------------------------------
-	# edge_t
-	# -----------------------------------------------------
-	var edge_t = parser_v2.create("edge_t")
-	edge_t.add("vertex0",		parser_v2.T_U16	)
-	edge_t.add("vertex1",		parser_v2.T_U16	)
-	
-	# -----------------------------------------------------
-	# texinfo_t (doc: surface_t)
-	# -----------------------------------------------------
-	var texinfo_t = parser_v2.create("texinfo_t")
-	texinfo_t.add("vectorS",		parser_v2.T_VEC3	)
-	texinfo_t.add("distS",			parser_v2.T_F32		)
-	texinfo_t.add("vectorT",		parser_v2.T_VEC3	)
-	texinfo_t.add("distT",			parser_v2.T_F32		)
-	texinfo_t.add("texture_id",		parser_v2.T_U32		)
-	texinfo_t.add("animated",		parser_v2.T_U32		)
-	
-	# -----------------------------------------------------
-	# face_t
-	# -----------------------------------------------------
-	var face_t = parser_v2.create("face_t")
-	face_t.add("plane_id",		parser_v2.T_U16	)
-	face_t.add("side",			parser_v2.T_U16	)
-	face_t.add("ledge_id",		parser_v2.T_U32	)
-	face_t.add("ledge_num",		parser_v2.T_U16	)
-	face_t.add("texinfo_id",	parser_v2.T_U16	)
-	face_t.add("typelight",		parser_v2.T_U8	)
-	face_t.add("baselight",		parser_v2.T_U8	)
-	face_t.add("light0",		parser_v2.T_U8	)
-	face_t.add("light1",		parser_v2.T_U8	)
-	face_t.add("lightmap",		parser_v2.T_U32	)
-	
-	# -----------------------------------------------------
-	# mipheader_t
-	# -----------------------------------------------------
-	var mipheader_t = parser_v2.create("mipheader_t")
-	mipheader_t.add("numtex",		parser_v2.T_U32					)
-	mipheader_t.add("offsets",		parser_v2.T_U32,	"numtex"	)
-	
-	# -----------------------------------------------------
-	# miptex_t
-	# -----------------------------------------------------
-	var miptex_t = parser_v2.create("miptex_t")
-	miptex_t.add("name",		parser_v2.T_STRING,		16	)
-	miptex_t.add("width",		parser_v2.T_U32				)
-	miptex_t.add("height",		parser_v2.T_U32				)
-	miptex_t.add("offset1",		parser_v2.T_U32				)
-	miptex_t.add("offset2",		parser_v2.T_U32				)
-	miptex_t.add("offset4",		parser_v2.T_U32				)
-	miptex_t.add("offset8",		parser_v2.T_U32				)
-	
-	# -----------------------------------------------------
-	# node_t
-	# -----------------------------------------------------
-	var node_t = parser_v2.create("node_t")
-	node_t.add("plane_id",		parser_v2.T_U32		)
-	node_t.add("front",			parser_v2.T_U16		)
-	node_t.add("back",			parser_v2.T_U16		)
-	node_t.add("box",			"bboxshort_t"		)
-	node_t.add("face_id",		parser_v2.T_U16		)
-	node_t.add("face_num",		parser_v2.T_U16		)
-	
-	# -----------------------------------------------------
-	# dleaf_t
-	# -----------------------------------------------------
-	var dleaf_t = parser_v2.create("dleaf_t")
-	dleaf_t.add("type",			parser_v2.T_I32		)
-	dleaf_t.add("vislist",		parser_v2.T_I32		)
-	dleaf_t.add("bound",		"bboxshort_t"		)
-	dleaf_t.add("lface_id",		parser_v2.T_U16		)
-	dleaf_t.add("lface_num",	parser_v2.T_U16		)
-	dleaf_t.add("sndwater",		parser_v2.T_U8		)
-	dleaf_t.add("sndsky",		parser_v2.T_U8		)
-	dleaf_t.add("sndslime",		parser_v2.T_U8		)
-	dleaf_t.add("sndlava",		parser_v2.T_U8		)
-	
-	# -----------------------------------------------------
-	# lface_t
-	# -----------------------------------------------------	
-	var lface_t = parser_v2.create("lface_t")
-	lface_t.add("lface",		parser_v2.T_U16			)
-	# mode
-	lface_t.set_eval_mode(parser_v2.RETURN_UNWRAPPED)
-	
-	
-	# -----------------------------------------------------
-	# lightmap_t
-	# -----------------------------------------------------	
-	var lightmap_t = parser_v2.create("lightmap_t")
-	lightmap_t.add("lightmap",		parser_v2.T_U8			)
-	# mode
-	lightmap_t.set_eval_mode(parser_v2.RETURN_UNWRAPPED)
-	
-	# -----------------------------------------------------
-	# ledge_t
-	# -----------------------------------------------------	
-	var ledge_t = parser_v2.create("ledge_t")
-	ledge_t.add("ledge",		parser_v2.T_I32			)
-	# mode
-	ledge_t.set_eval_mode(parser_v2.RETURN_UNWRAPPED)
-	
-	# -----------------------------------------------------
-	# visilist_t
-	# -----------------------------------------------------	
-	var visilist_t = parser_v2.create("visilist_t")
-	visilist_t.add("visilist_t",		parser_v2.T_U8	)
-	# mode
-	visilist_t.set_eval_mode(parser_v2.RETURN_UNWRAPPED)
-	
-	# -----------------------------------------------------
-	# plane_t
-	# -----------------------------------------------------	
-	var plane_t = parser_v2.create("visilist_t")
-	plane_t.add("normal",		parser_v2.T_VEC3	)
-	plane_t.add("dist",			parser_v2.T_F32		)
-	plane_t.add("type",			parser_v2.T_U32		)
-	
-	# -----------------------------------------------------
-	# clipnode_t
-	# -----------------------------------------------------	
-	var clipnode_t = parser_v2.create("clipnode_t")
-	clipnode_t.add("planenum",		parser_v2.T_U32		)
-	clipnode_t.add("front",			parser_v2.T_I16		)
-	clipnode_t.add("back",			parser_v2.T_I16		)
-	
-	# -----------------------------------------------------
-	# eval 
-	# -----------------------------------------------------	
-	
-	var _map = Dictionary()
-	
-	var header = _get_header(data, dheader_t)
-	
-	_map.header = header
-	
-	_map.entities = _get_entities(data, header)
-	_map.planes = _get_entries(data, header.planes, plane_t)
-	_map.miptexs = _get_miptexs(data, header, mipheader_t, miptex_t)
-	_map.vertices = _get_entries(data, header.vertices, vertex_t)
-	_map.visilist = _get_entries(data, header.visilist, visilist_t)
-	_map.nodes = _get_entries(data, header.nodes, node_t)
-	_map.texinfos = _get_entries(data, header.texinfo, texinfo_t)
-	_map.faces = _get_entries(data, header.faces, face_t)
-	_map.lightmaps = _get_entries(data, header.lightmaps, lightmap_t)
-	_map.clipnodes = _get_entries(data, header.clipnodes, clipnode_t)
-	_map.leaves = _get_entries(data, header.leaves, dleaf_t)
-	_map.lfaces = _get_entries(data, header.lfaces, lface_t)
-	_map.edges = _get_entries(data, header.edges, edge_t)
-	_map.ledges = _get_entries(data, header.ledges, ledge_t)
-	_map.models = _get_entries(data, header.models, model_t)
-	
-	_map.filename = filename
-	_map.valid = true
+	if dir.file_exists(path) and console.cvars["cache"].value == 1:
+		var cache_file = File.new()
+		cache_file.open(path, File.READ)
+		map = cache_file.get_var()
+		cache_file.close()
+		
+	else:
+		var bsp_file = File.new()
+		bsp_file.open("user://data/" + filename, bsp_file.READ)
+		var data = bsp_file.get_buffer(bsp_file.get_len())
+		
+		# -----------------------------------------------------
+		# dentry_t
+		# -----------------------------------------------------
+		var dentry_t = parser_v2.create("dentry_t")
+		dentry_t.add("offset",		parser_v2.T_U32	)
+		dentry_t.add("size",		parser_v2.T_U32	)
+		
+		# -----------------------------------------------------
+		# dheader_t
+		# -----------------------------------------------------
+		var dheader_t = parser_v2.create("dheader_t")
+		dheader_t.add("version",		parser_v2.T_U32	)
+		dheader_t.add("entities",		"dentry_t"		)
+		dheader_t.add("planes",			"dentry_t"		)
+		dheader_t.add("miptex",			"dentry_t"		)
+		dheader_t.add("vertices",		"dentry_t"		)
+		dheader_t.add("visilist",		"dentry_t"		)
+		dheader_t.add("nodes",			"dentry_t"		)
+		dheader_t.add("texinfo",		"dentry_t"		)
+		dheader_t.add("faces",			"dentry_t"		)
+		dheader_t.add("lightmaps",		"dentry_t"		)
+		dheader_t.add("clipnodes",		"dentry_t"		)
+		dheader_t.add("leaves",			"dentry_t"		)
+		dheader_t.add("lfaces",			"dentry_t"		)
+		dheader_t.add("edges",			"dentry_t"		)
+		dheader_t.add("ledges",			"dentry_t"		)
+		dheader_t.add("models",			"dentry_t"		)
+		
+		
+		# -----------------------------------------------------
+		# vertex_t
+		# -----------------------------------------------------	
+		var vertex_t = parser_v2.create("vertex_t")
+		vertex_t.add("vec",		parser_v2.T_VEC3			)
+		# mode
+		vertex_t.set_eval_mode(parser_v2.RETURN_UNWRAPPED)
+		
+		# -----------------------------------------------------
+		# boundbox_t
+		# -----------------------------------------------------
+		var boundbox_t = parser_v2.create("boundbox_t")
+		boundbox_t.add("min",		parser_v2.T_VEC3	)
+		boundbox_t.add("max",		parser_v2.T_VEC3	)
+		
+		# -----------------------------------------------------
+		# bboxshort_t
+		# -----------------------------------------------------
+		var bboxshort_t = parser_v2.create("bboxshort_t")
+		bboxshort_t.add("min_x",		parser_v2.T_I16	)
+		bboxshort_t.add("min_y",		parser_v2.T_I16	)
+		bboxshort_t.add("min_z",		parser_v2.T_I16	)
+		bboxshort_t.add("max_x",		parser_v2.T_I16	)
+		bboxshort_t.add("max_y",		parser_v2.T_I16	)
+		bboxshort_t.add("max_z",		parser_v2.T_I16	)
+		
+		# -----------------------------------------------------
+		# model_t
+		# -----------------------------------------------------
+		var model_t = parser_v2.create("model_t")
+		model_t.add("bound",		"boundbox_t"		)
+		model_t.add("origin",		parser_v2.T_VEC3	)
+		model_t.add("node_id0",		parser_v2.T_U32		)
+		model_t.add("node_id1",		parser_v2.T_U32		)
+		model_t.add("node_id2",		parser_v2.T_U32		)
+		model_t.add("node_id3",		parser_v2.T_U32		)
+		model_t.add("numleafs",		parser_v2.T_U32		)
+		model_t.add("face_id",		parser_v2.T_U32		)
+		model_t.add("face_num",		parser_v2.T_U32		)
+		
+		# -----------------------------------------------------
+		# edge_t
+		# -----------------------------------------------------
+		var edge_t = parser_v2.create("edge_t")
+		edge_t.add("vertex0",		parser_v2.T_U16	)
+		edge_t.add("vertex1",		parser_v2.T_U16	)
+		
+		# -----------------------------------------------------
+		# texinfo_t (doc: surface_t)
+		# -----------------------------------------------------
+		var texinfo_t = parser_v2.create("texinfo_t")
+		texinfo_t.add("vectorS",		parser_v2.T_VEC3	)
+		texinfo_t.add("distS",			parser_v2.T_F32		)
+		texinfo_t.add("vectorT",		parser_v2.T_VEC3	)
+		texinfo_t.add("distT",			parser_v2.T_F32		)
+		texinfo_t.add("texture_id",		parser_v2.T_U32		)
+		texinfo_t.add("animated",		parser_v2.T_U32		)
+		
+		# -----------------------------------------------------
+		# face_t
+		# -----------------------------------------------------
+		var face_t = parser_v2.create("face_t")
+		face_t.add("plane_id",		parser_v2.T_U16	)
+		face_t.add("side",			parser_v2.T_U16	)
+		face_t.add("ledge_id",		parser_v2.T_U32	)
+		face_t.add("ledge_num",		parser_v2.T_U16	)
+		face_t.add("texinfo_id",	parser_v2.T_U16	)
+		face_t.add("typelight",		parser_v2.T_U8	)
+		face_t.add("baselight",		parser_v2.T_U8	)
+		face_t.add("light0",		parser_v2.T_U8	)
+		face_t.add("light1",		parser_v2.T_U8	)
+		face_t.add("lightmap",		parser_v2.T_U32	)
+		
+		# -----------------------------------------------------
+		# mipheader_t
+		# -----------------------------------------------------
+		var mipheader_t = parser_v2.create("mipheader_t")
+		mipheader_t.add("numtex",		parser_v2.T_U32					)
+		mipheader_t.add("offsets",		parser_v2.T_U32,	"numtex"	)
+		
+		# -----------------------------------------------------
+		# miptex_t
+		# -----------------------------------------------------
+		var miptex_t = parser_v2.create("miptex_t")
+		miptex_t.add("name",		parser_v2.T_STRING,		16	)
+		miptex_t.add("width",		parser_v2.T_U32				)
+		miptex_t.add("height",		parser_v2.T_U32				)
+		miptex_t.add("offset1",		parser_v2.T_U32				)
+		miptex_t.add("offset2",		parser_v2.T_U32				)
+		miptex_t.add("offset4",		parser_v2.T_U32				)
+		miptex_t.add("offset8",		parser_v2.T_U32				)
+		
+		# -----------------------------------------------------
+		# node_t
+		# -----------------------------------------------------
+		var node_t = parser_v2.create("node_t")
+		node_t.add("plane_id",		parser_v2.T_U32		)
+		node_t.add("front",			parser_v2.T_U16		)
+		node_t.add("back",			parser_v2.T_U16		)
+		node_t.add("box",			"bboxshort_t"		)
+		node_t.add("face_id",		parser_v2.T_U16		)
+		node_t.add("face_num",		parser_v2.T_U16		)
+		
+		# -----------------------------------------------------
+		# dleaf_t
+		# -----------------------------------------------------
+		var dleaf_t = parser_v2.create("dleaf_t")
+		dleaf_t.add("type",			parser_v2.T_I32		)
+		dleaf_t.add("vislist",		parser_v2.T_I32		)
+		dleaf_t.add("bound",		"bboxshort_t"		)
+		dleaf_t.add("lface_id",		parser_v2.T_U16		)
+		dleaf_t.add("lface_num",	parser_v2.T_U16		)
+		dleaf_t.add("sndwater",		parser_v2.T_U8		)
+		dleaf_t.add("sndsky",		parser_v2.T_U8		)
+		dleaf_t.add("sndslime",		parser_v2.T_U8		)
+		dleaf_t.add("sndlava",		parser_v2.T_U8		)
+		
+		# -----------------------------------------------------
+		# lface_t
+		# -----------------------------------------------------	
+		var lface_t = parser_v2.create("lface_t")
+		lface_t.add("lface",		parser_v2.T_U16			)
+		# mode
+		lface_t.set_eval_mode(parser_v2.RETURN_UNWRAPPED)
+		
+		
+		# -----------------------------------------------------
+		# lightmap_t
+		# -----------------------------------------------------	
+		var lightmap_t = parser_v2.create("lightmap_t")
+		lightmap_t.add("lightmap",		parser_v2.T_U8			)
+		# mode
+		lightmap_t.set_eval_mode(parser_v2.RETURN_UNWRAPPED)
+		
+		# -----------------------------------------------------
+		# ledge_t
+		# -----------------------------------------------------	
+		var ledge_t = parser_v2.create("ledge_t")
+		ledge_t.add("ledge",		parser_v2.T_I32			)
+		# mode
+		ledge_t.set_eval_mode(parser_v2.RETURN_UNWRAPPED)
+		
+		# -----------------------------------------------------
+		# visilist_t
+		# -----------------------------------------------------	
+		var visilist_t = parser_v2.create("visilist_t")
+		visilist_t.add("visilist_t",		parser_v2.T_U8	)
+		# mode
+		visilist_t.set_eval_mode(parser_v2.RETURN_UNWRAPPED)
+		
+		# -----------------------------------------------------
+		# plane_t
+		# -----------------------------------------------------	
+		var plane_t = parser_v2.create("visilist_t")
+		plane_t.add("normal",		parser_v2.T_VEC3	)
+		plane_t.add("dist",			parser_v2.T_F32		)
+		plane_t.add("type",			parser_v2.T_U32		)
+		
+		# -----------------------------------------------------
+		# clipnode_t
+		# -----------------------------------------------------	
+		var clipnode_t = parser_v2.create("clipnode_t")
+		clipnode_t.add("planenum",		parser_v2.T_U32		)
+		clipnode_t.add("front",			parser_v2.T_I16		)
+		clipnode_t.add("back",			parser_v2.T_I16		)
+		
+		# -----------------------------------------------------
+		# eval 
+		# -----------------------------------------------------	
+		
+		var _map = Dictionary()
+		
+		var header = _get_header(data, dheader_t)
+		
+		_map.header = header
+		
+		#_map.entities = _get_entities(data, header)
+		#_map.planes = _get_entries(data, header.planes, plane_t)
+		#_map.miptexs = _get_miptexs(data, header, mipheader_t, miptex_t)
+		#_map.vertices = _get_entries(data, header.vertices, vertex_t)
+		#_map.visilist = _get_entries(data, header.visilist, visilist_t)
+		#_map.nodes = _get_entries(data, header.nodes, node_t)
+		#_map.texinfos = _get_entries(data, header.texinfo, texinfo_t)
+		#_map.faces = _get_entries(data, header.faces, face_t)
+		#_map.lightmaps = _get_entries(data, header.lightmaps, lightmap_t)
+		#_map.clipnodes = _get_entries(data, header.clipnodes, clipnode_t)
+		#_map.leaves = _get_entries(data, header.leaves, dleaf_t)
+		#_map.lfaces = _get_entries(data, header.lfaces, lface_t)
+		#_map.edges = _get_entries(data, header.edges, edge_t)
+		#_map.ledges = _get_entries(data, header.ledges, ledge_t)
+		#_map.models = _get_entries(data, header.models, model_t)
+		
+		
+		var _thread_entities = console.con_thread("entities", self, "_get_entities", [data, header]) 
+		var _thread_planes = console.con_thread("planes",self,"_get_entries",[data, header.planes, plane_t])
+		var _thread_miptexs = console.con_thread("miptexs",self,"_get_miptexs",[data, header, mipheader_t, miptex_t])
+		var _thread_vertices = console.con_thread("vertices",self,"_get_entries",[data, header.vertices, vertex_t])
+		
+		var _thread_visilist = console.con_thread("visilist",self,"_get_entries",[data, header.visilist, visilist_t])
+		var _thread_nodes = console.con_thread("nodes",self,"_get_entries",[data, header.nodes, node_t])
+		var _thread_texinfos = console.con_thread("texinfos",self,"_get_entries",[data, header.texinfo, texinfo_t])
+		var _thread_faces = console.con_thread("faces",self,"_get_entries",[data, header.faces, face_t])
 
-	map = _map
+		var _thead_lightmaps = console.con_thread("lightmaps",self,"_get_entries",[data, header.lightmaps, lightmap_t])
+		var _thread_clipnodes = console.con_thread("clipnodes",self,"_get_entries",[data, header.clipnodes, clipnode_t])
+		var _thread_leaves = console.con_thread("leaves",self,"_get_entries",[data, header.leaves, dleaf_t])
+		var _thread_lfaces = console.con_thread("lfaces",self,"_get_entries",[data, header.lfaces, lface_t])
+		
+		var _thread_edges = console.con_thread("edges",self,"_get_entries",[data, header.edges, edge_t])
+		var _thread_ledges = console.con_thread("ledges",self,"_get_entries",[data, header.ledges, ledge_t])
+		var _thead_models = console.con_thread("models",self,"_get_entries",[data, header.models, model_t])
+		
+
+		
+		_map.entities = console.con_thread_wait(_thread_entities)
+		_map.planes = console.con_thread_wait(_thread_planes)
+		_map.miptexs = console.con_thread_wait(_thread_miptexs)
+		_map.vertices = console.con_thread_wait(_thread_vertices)
+		
+		_map.visilist = console.con_thread_wait(_thread_visilist)
+		_map.nodes = console.con_thread_wait(_thread_nodes)
+		_map.texinfos = console.con_thread_wait(_thread_texinfos)
+		_map.faces = console.con_thread_wait(_thread_faces)
+
+		_map.lightmaps = console.con_thread_wait(_thead_lightmaps)
+		_map.clipnodes = console.con_thread_wait(_thread_clipnodes)
+		_map.leaves = console.con_thread_wait(_thread_leaves)
+		_map.lfaces = console.con_thread_wait(_thread_lfaces)
+
+		_map.edges = console.con_thread_wait(_thread_edges)
+		_map.ledges = console.con_thread_wait(_thread_ledges)
+		_map.models = console.con_thread_wait(_thead_models)
+		
+		_map.filename = filename
+		_map.valid = true
+		map = _map
+		
+		if console.cvars["cache"].value == 1:
+			var new_file_name = "user://cache/" + map.filename + "/"
+			var dir2 = Directory.new()
+			dir2.make_dir_recursive( new_file_name.get_base_dir() )
+			
+			var file = File.new()
+			var err = file.open(new_file_name + "map.res", file.WRITE)
+			file.store_var(map, true)
+			file.close()
+		
 	map_loaded = true
+	
+	_end = OS.get_ticks_msec()
+	console.con_print(str(_end-_start) + " ms")
+	
+	_start = OS.get_ticks_msec()
+	
+	for i in range(len(map.models)):
+		#var start = OS.get_ticks_msec()
+		bsp_meshes.insert(i, _get_node(map, i))
+		#var end = OS.get_ticks_msec()
+		#console.con_print("%d -- %d ms" % [i, end-start])
+		
+	_end = OS.get_ticks_msec()
+	console.con_print(str(_end-_start) + " ms")
+
 
 func _get_header(data, struct):
 	var header = struct.eval(data, 0)
@@ -406,7 +489,9 @@ func _get_node(map, model_index):
 		array[Mesh.ARRAY_VERTEX] = tex[t].v
 		array[Mesh.ARRAY_NORMAL] = tex[t].n
 		array[Mesh.ARRAY_TEX_UV] = tex[t].st
-	
+		
+		#print("Mesh_%s_%s" % [str(model_index), str(t_index)])
+		
 		var mesh = ArrayMesh.new()
 		mesh.set_name("Tex_MeshInstance_" + str(t_index))
 		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, array)
@@ -437,23 +522,53 @@ func _get_node(map, model_index):
 
 
 func _get_tex(map, index):
-	var data = map.miptexs[index].raw_tex1
-	var w = map.miptexs[index].width
-	var h = map.miptexs[index].height
 	
-	var image = Image.new()
-	image.create(w, h, false, Image.FORMAT_RGB8)
-	image.lock()
+	var _name = map.miptexs[index].name
 	
-	for x in range(0,w):
-		for y in range(0,h):
-			image.set_pixel(x,y, pallete.color[data[x+y*w]])
+	if _name.begins_with('*'):
+		_name.erase(0,1)
+		_name = "__asterisk__" + _name
+			
+	if _name.begins_with('+'):
+		_name.erase(0,1)
+		_name = "__plus__" + _name
 	
-	image.unlock()
-	var tex = ImageTexture.new()
-	tex.create_from_image(image)
-	
-	return tex
+	if bsp_textures.has(_name) and console.cvars["cache"].value == 1:
+		return bsp_textures[_name]
+	else:
+		
+		var dir = Directory.new()
+		
+		var path = "user://cache/" + map.filename + "/Textures/" + _name + ".tex"
+		
+		if ResourceLoader.exists(path) and console.cvars["cache"].value == 1:
+			var tex = ResourceLoader.load(path)
+			bsp_textures[_name] = tex
+			return tex
+			
+		else:
+			var data = map.miptexs[index].raw_tex1
+			var w = map.miptexs[index].width
+			var h = map.miptexs[index].height
+			
+			var image = Image.new()
+			image.create(w, h, false, Image.FORMAT_RGB8)
+			image.lock()
+			
+			for x in range(0,w):
+				for y in range(0,h):
+					image.set_pixel(x,y, pallete.color[data[x+y*w]])
+			
+			image.unlock()
+			var tex = ImageTexture.new()
+			tex.create_from_image(image)
+			
+			if console.cvars["cache"].value == 1:
+				bsp_textures[_name] = tex
+				dir.make_dir_recursive( path.get_base_dir() )
+				ResourceSaver.save(path, tex)
+			
+			return tex
 
 
 func _ready():
@@ -469,6 +584,7 @@ func _ready():
 		args = "<entry>",
 		num_args = 1
 	})
+
 #	console.register_command("bsp_entity_list", {
 #		node = self,
 #		description = "Lists the entities with the specified classname",
@@ -484,17 +600,30 @@ func _ready():
 
 
 func _confunc_map(args):
+	
+	map = Dictionary()
+	map_loaded = false
+	raw = Raw.new()
+	
+	for c in $"/root/world/map".get_children():
+		$"/root/world/map".remove_child(c)
+		c.queue_free()
+	
 	load_map("maps/%s" % args[1])
 	console.con_print_ok("maps/%s loaded." % args[1])
+	$"/root/world/map".add_child(bsp_meshes[0])
 
 
 func _confunc_map_info(args):
 	if map_loaded:
 		if args[1] == "entities":
 			for e in map.entities:
-				console.con_print(e)
+				console.con_print("---")
+				for k in e.keys():
+					console.con_print("%s %s" % [k, e[k]])
 	else:
 		console.con_print_warn("No map loaded!")
+
 
 
 #func _load_icon(name, caption = "Caption!", text = ""):

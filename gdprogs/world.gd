@@ -31,7 +31,7 @@ func test_armor():
 
 func init_console():
 	var banner = """
-           _  ___              _        _
+		   _  ___              _        _
   __ _  __| |/ _ \\ _   _  __ _| | _____/ |
  / _` |/ _` | | | | | | |/ _` | |/ / _ \\ |
 | (_| | (_| | |_| | |_| | (_| |   <  __/ |
@@ -50,8 +50,8 @@ func _ready():
 	init_console()
 	
 	#pak.load_pak("PAK0.PAK")
-	#pallete.load_pallete()
-	#wad.load_wad("gfx.wad")
+	pallete.load_pallete()
+	wad.load_wad("gfx.wad")
 	#mdl.load_mdl("progs/armor.mdl")
 	
 #	var map = bsp.load_bsp("maps/b_bh25.bsp")

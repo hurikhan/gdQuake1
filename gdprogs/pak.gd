@@ -1,6 +1,5 @@
 extends Node
 
-onready var archive = preload("res://addons/gdarchive/gdarchive.gdns").new()
 onready var raw = Raw.new()
 var _req
 
@@ -26,9 +25,9 @@ func _get_pack_entry(data, offset, number):
 
 func load_pak(filename):
 	var pak = File.new()
-	pak.open("user://decompressed/QUAKE_SW/ID1/" + filename, pak.READ)
+	pak.open("res://data/id1/" + filename, pak.READ)
 	var data = pak.get_buffer(pak.get_len())
-		
+	
 	console.con_print("pak_file: %s" % filename)
 	console.con_print("pak_size: %s bytes" % data.size())
 	
@@ -78,7 +77,7 @@ func _ready():
 
 
 func _confunc_pak_init():
-	pak.load_pak("PAK0.PAK")
+	pak.load_pak("pak0.pak")
 
 
 func _pak_download_status():
@@ -111,17 +110,4 @@ func _confunc_pak_download():
 
 
 func _confunc_pak_decompress():
-	
-	var dir = Directory.new()
-	dir.make_dir_recursive("user://decompressed/")
-	dir = null
-	
-	if archive.open("user://downloads/quake-shareware.tar.xz"):
-		# TODO: investigate crash with archive.list() in gdArchive
-		#var files = archive.list()
-		archive.extract("user://decompressed/")
-		archive.close()
-		
-		console.con_print_ok("Files decompressed.")
-	else:
-		console.con_print_error("Could not open archive.")
+	pass

@@ -1,6 +1,16 @@
 extends Node
 
-enum {T_STRING, T_U8, T_U32, T_VEC3, T_F32, T_U8_ARR T_F32_ARR, T_U32_ARR, T_DUMMY}
+enum {
+	T_STRING,
+	T_U8,
+	T_U32,
+	T_VEC3,
+	T_F32,
+	T_U8_ARR,
+	T_F32_ARR,
+	T_U32_ARR,
+	T_DUMMY
+}
 
 
 func create(name, debug_level=0):

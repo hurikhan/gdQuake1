@@ -36,6 +36,9 @@ var ansi_support = false
 var state = CONSOLE_STATE_CLOSED
 var busy = false
 
+var thread_count = 0
+var thread_count_mutex = Mutex.new()
+
 #                    _       
 # _ __ ___  __ _  __| |_   _ 
 #| '__/ _ \/ _` |/ _` | | | |
@@ -328,6 +331,56 @@ func con_print_warn(text : String):
 func con_print_error(text):
 	# red text
 	con_print("[color=red][ERROR] -- %s[/color]" % str(text))
+
+
+func con_thread(text, _node, _func, _args):
+	
+	while(true):
+		if thread_count >= 4:
+			OS.delay_msec(10)
+		else:
+			thread_count_mutex.lock()
+			thread_count += 1
+			thread_count_mutex.unlock()
+			break
+	
+	var userdata = Array()
+	
+	userdata.insert(0, text)
+	userdata.insert(1, _node)
+	userdata.insert(2, _func)
+	userdata.insert(3, _args)
+	
+	var _thread = Thread.new()
+	_thread.start(self, "_con_thread_func", userdata)
+	con_print("Thread: %s" % text)
+	
+	return _thread
+	
+	
+	
+func con_thread_wait(_thread):
+	return _thread.wait_to_finish()
+	
+	
+func _con_thread_func(userdata):
+	
+	var _text = userdata[0]
+	var _node = userdata[1]
+	var _func = userdata[2]
+	var _args = userdata[3]
+	
+	var start = OS.get_ticks_msec()
+	var ret = _node.callv(_func, _args)
+	var end = OS.get_ticks_msec()
+	con_print("[color=blue][TIMED] -- %s %d ms[/color]" % [str(_text), end-start])
+	
+	thread_count_mutex.lock()
+	thread_count -= 1
+	thread_count_mutex.unlock()
+	
+	return ret
+
 
 
 func con_print_array(arr):
@@ -830,7 +883,14 @@ func _register_commands():
 		node = self,
 		description = "Lists the files in the current directory.",
 		args = "<directory>",
-		num_args = 1,
+		num_args = 1
+	})
+	
+	register_command("cache_clear", {
+		node = self,
+		description = "Clear the cache.",
+		args = "",
+		num_args = 0
 	})
 
 
@@ -1104,6 +1164,33 @@ func _confunc_ls(args):
 	for f in files:
 		console.con_print(f)
 
+
+# Removes the whole cache directory.
+func _confunc_cache_clear():
+	var path = "user://cache/"
+	
+	var dir = Directory.new()
+	
+	if dir.dir_exists(path):
+		_remove_dir(path)
+		dir.remove(path)
+
+
+# [Helper] Removes a complete directory recursivly
+func _remove_dir(path):
+	
+	var dir = Directory.new()	
+	var ret = shell_ls(path)
+	var dirs = ret[0]
+	var files = ret[1]
+	
+	for d in dirs:
+		_remove_dir(path+d+"/")
+		dir.remove(path+d)
+	
+	for f in files:
+		dir.remove(path+f)
+
 #                _     _                                       
 # _ __ ___  __ _(_)___| |_ ___ _ __    _____   ____ _ _ __ ___ 
 #| '__/ _ \/ _` | / __| __/ _ \ '__|  / __\ \ / / _` | '__/ __|
@@ -1165,6 +1252,7 @@ func _register_cvars():
 		min_value = 0,
 		max_value = 1
 	})
+	
 	register_cvar("console_ansi_color", {
 		node = self,
 		description = "Activates/Deactivates ANSI color support for the terminal output.",
@@ -1173,6 +1261,7 @@ func _register_cvars():
 		min_value = 0,
 		max_value = 1
 	})
+	
 	register_cvar("console_print_image_scale", {
 		node = self,
 		description = "Sets the scale for images, which are printed trought con_print_image().",
@@ -1180,6 +1269,15 @@ func _register_cvars():
 		default_value = 2.0,
 		min_value = 0.0,
 		max_value = 100.0
+	})
+	
+	register_cvar("cache", {
+		node = self,
+		description = "Activates/Deactivates the cache functionality.",
+		type = "int",
+		default_value = 1,
+		min_value = 0,
+		max_value = 1
 	})
 
 
@@ -1265,13 +1363,16 @@ func _convar_console_ansi_color(value):
 func _convar_console_print_image_scale(value):
 	pass
 
+# Cache On/Off
+func _convar_cache(value):
+	pass
 
 #     _          _ _                      _     
 # ___| |__   ___| | |   ___ _ __ ___   __| |___ 
 #/ __| '_ \ / _ \ | |  / __| '_ ` _ \ / _` / __|
 #\__ \ | | |  __/ | | | (__| | | | | | (_| \__ \
 #|___/_| |_|\___|_|_|  \___|_| |_| |_|\__,_|___/
-                                               
+											   
 
 func shell_ls(path):
 	var dir = Directory.new()
