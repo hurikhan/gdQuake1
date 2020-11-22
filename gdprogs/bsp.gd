@@ -172,6 +172,7 @@ func load_map(filename):
 		dleaf_t.add("sndslime",		parser_v2.T_U8		)
 		dleaf_t.add("sndlava",		parser_v2.T_U8		)
 		
+		
 		# -----------------------------------------------------
 		# lface_t
 		# -----------------------------------------------------	
@@ -231,62 +232,68 @@ func load_map(filename):
 		
 		_map.header = header
 		
-		#_map.entities = _get_entities(data, header)
-		#_map.planes = _get_entries(data, header.planes, plane_t)
-		#_map.miptexs = _get_miptexs(data, header, mipheader_t, miptex_t)
-		#_map.vertices = _get_entries(data, header.vertices, vertex_t)
-		#_map.visilist = _get_entries(data, header.visilist, visilist_t)
-		#_map.nodes = _get_entries(data, header.nodes, node_t)
-		#_map.texinfos = _get_entries(data, header.texinfo, texinfo_t)
-		#_map.faces = _get_entries(data, header.faces, face_t)
-		#_map.lightmaps = _get_entries(data, header.lightmaps, lightmap_t)
-		#_map.clipnodes = _get_entries(data, header.clipnodes, clipnode_t)
-		#_map.leaves = _get_entries(data, header.leaves, dleaf_t)
-		#_map.lfaces = _get_entries(data, header.lfaces, lface_t)
-		#_map.edges = _get_entries(data, header.edges, edge_t)
-		#_map.ledges = _get_entries(data, header.ledges, ledge_t)
-		#_map.models = _get_entries(data, header.models, model_t)
+		if console.cvars["mt"].value == 0:
 		
+			_map.entities = _get_entities(data, header)
+			_map.planes = _get_entries(data, header.planes, plane_t)
+			_map.miptexs = _get_miptexs(data, header, mipheader_t, miptex_t)
+			_map.vertices = _get_entries(data, header.vertices, vertex_t)
+			_map.visilist = _get_entries(data, header.visilist, visilist_t)
+			_map.nodes = _get_entries(data, header.nodes, node_t)
+			_map.texinfos = _get_entries(data, header.texinfo, texinfo_t)
+			_map.faces = _get_entries(data, header.faces, face_t)
+			_map.lightmaps = _get_lightmap(data, header.lightmaps, lightmap_t)
+			_map.clipnodes = _get_entries(data, header.clipnodes, clipnode_t)
+			_map.leaves = _get_entries(data, header.leaves, dleaf_t)
+			_map.lfaces = _get_entries(data, header.lfaces, lface_t)
+			_map.edges = _get_entries(data, header.edges, edge_t)
+			_map.ledges = _get_entries(data, header.ledges, ledge_t)
+			_map.models = _get_entries(data, header.models, model_t)
+			
 		
-		var _thread_entities = console.con_thread("entities", self, "_get_entities", [data, header]) 
-		var _thread_planes = console.con_thread("planes",self,"_get_entries",[data, header.planes, plane_t])
-		var _thread_miptexs = console.con_thread("miptexs",self,"_get_miptexs",[data, header, mipheader_t, miptex_t])
-		var _thread_vertices = console.con_thread("vertices",self,"_get_entries",[data, header.vertices, vertex_t])
+		else:
 		
-		var _thread_visilist = console.con_thread("visilist",self,"_get_entries",[data, header.visilist, visilist_t])
-		var _thread_nodes = console.con_thread("nodes",self,"_get_entries",[data, header.nodes, node_t])
-		var _thread_texinfos = console.con_thread("texinfos",self,"_get_entries",[data, header.texinfo, texinfo_t])
-		var _thread_faces = console.con_thread("faces",self,"_get_entries",[data, header.faces, face_t])
-
-		var _thead_lightmaps = console.con_thread("lightmaps",self,"_get_entries",[data, header.lightmaps, lightmap_t])
-		var _thread_clipnodes = console.con_thread("clipnodes",self,"_get_entries",[data, header.clipnodes, clipnode_t])
-		var _thread_leaves = console.con_thread("leaves",self,"_get_entries",[data, header.leaves, dleaf_t])
-		var _thread_lfaces = console.con_thread("lfaces",self,"_get_entries",[data, header.lfaces, lface_t])
-		
-		var _thread_edges = console.con_thread("edges",self,"_get_entries",[data, header.edges, edge_t])
-		var _thread_ledges = console.con_thread("ledges",self,"_get_entries",[data, header.ledges, ledge_t])
-		var _thead_models = console.con_thread("models",self,"_get_entries",[data, header.models, model_t])
-		
-
-		
-		_map.entities = console.con_thread_wait(_thread_entities)
-		_map.planes = console.con_thread_wait(_thread_planes)
-		_map.miptexs = console.con_thread_wait(_thread_miptexs)
-		_map.vertices = console.con_thread_wait(_thread_vertices)
-		
-		_map.visilist = console.con_thread_wait(_thread_visilist)
-		_map.nodes = console.con_thread_wait(_thread_nodes)
-		_map.texinfos = console.con_thread_wait(_thread_texinfos)
-		_map.faces = console.con_thread_wait(_thread_faces)
-
-		_map.lightmaps = console.con_thread_wait(_thead_lightmaps)
-		_map.clipnodes = console.con_thread_wait(_thread_clipnodes)
-		_map.leaves = console.con_thread_wait(_thread_leaves)
-		_map.lfaces = console.con_thread_wait(_thread_lfaces)
-
-		_map.edges = console.con_thread_wait(_thread_edges)
-		_map.ledges = console.con_thread_wait(_thread_ledges)
-		_map.models = console.con_thread_wait(_thead_models)
+			#FIXME: Should work all in parallel
+			# --> Rewrite of parser to use FILE capabilities only
+			# --> remove RAW module
+			
+			var _thread_entities = console.con_thread("entities", self, "_get_entities", [data, header]) 
+			var _thread_planes = console.con_thread("planes",self,"_get_entries",[data, header.planes, plane_t])
+			var _thread_miptexs = console.con_thread("miptexs",self,"_get_miptexs",[data, header, mipheader_t, miptex_t])
+			var _thread_vertices = console.con_thread("vertices",self,"_get_entries",[data, header.vertices, vertex_t])
+			
+			_map.entities = console.con_thread_wait(_thread_entities)
+			_map.planes = console.con_thread_wait(_thread_planes)
+			_map.miptexs = console.con_thread_wait(_thread_miptexs)
+			_map.vertices = console.con_thread_wait(_thread_vertices)
+			
+			var _thread_visilist = console.con_thread("visilist",self,"_get_entries",[data, header.visilist, visilist_t])
+			var _thread_nodes = console.con_thread("nodes",self,"_get_entries",[data, header.nodes, node_t])
+			var _thread_texinfos = console.con_thread("texinfos",self,"_get_entries",[data, header.texinfo, texinfo_t])
+			var _thread_faces = console.con_thread("faces",self,"_get_entries",[data, header.faces, face_t])
+			
+			_map.visilist = console.con_thread_wait(_thread_visilist)
+			_map.nodes = console.con_thread_wait(_thread_nodes)
+			_map.texinfos = console.con_thread_wait(_thread_texinfos)
+			_map.faces = console.con_thread_wait(_thread_faces)
+			
+			var _thead_lightmaps = console.con_thread("lightmaps",self,"_get_lightmap",[data, header.lightmaps, lightmap_t])
+			var _thread_clipnodes = console.con_thread("clipnodes",self,"_get_entries",[data, header.clipnodes, clipnode_t])
+			var _thread_leaves = console.con_thread("leaves",self,"_get_entries",[data, header.leaves, dleaf_t])
+			var _thread_lfaces = console.con_thread("lfaces",self,"_get_entries",[data, header.lfaces, lface_t])
+			
+			_map.lightmaps = console.con_thread_wait(_thead_lightmaps)
+			_map.clipnodes = console.con_thread_wait(_thread_clipnodes)
+			_map.leaves = console.con_thread_wait(_thread_leaves)
+			_map.lfaces = console.con_thread_wait(_thread_lfaces)
+			
+			var _thread_edges = console.con_thread("edges",self,"_get_entries",[data, header.edges, edge_t])
+			var _thread_ledges = console.con_thread("ledges",self,"_get_entries",[data, header.ledges, ledge_t])
+			var _thead_models = console.con_thread("models",self,"_get_entries",[data, header.models, model_t])
+			
+			_map.edges = console.con_thread_wait(_thread_edges)
+			_map.ledges = console.con_thread_wait(_thread_ledges)
+			_map.models = console.con_thread_wait(_thead_models)
 		
 		_map.filename = filename
 		_map.valid = true
@@ -305,7 +312,7 @@ func load_map(filename):
 	map_loaded = true
 	
 	_end = OS.get_ticks_msec()
-	console.con_print(str(_end-_start) + " ms")
+	console.con_print("Parsing BSP data in " + str(_end-_start) + " ms")
 	
 	_start = OS.get_ticks_msec()
 	
@@ -316,7 +323,7 @@ func load_map(filename):
 		#console.con_print("%d -- %d ms" % [i, end-start])
 		
 	_end = OS.get_ticks_msec()
-	console.con_print(str(_end-_start) + " ms")
+	console.con_print("Converting BSP data in " + str(_end-_start) + " ms")
 
 
 func _get_header(data, struct):
@@ -335,6 +342,21 @@ func _get_entries(data, dir, struct):
 		for i in range(0, dir.size / struct_size):
 			var e = struct.eval(data, dir.offset + i * struct_size)
 			arr.push_back(e)
+	
+	return arr
+
+
+
+func _get_lightmap(data, dir, struct):
+	var arr = PoolByteArray()
+	arr.resize(dir.size)
+	
+	#print(dir)
+	
+	#var _data = data
+	
+	if dir.size != 0:
+		arr = data.subarray(dir.offset, dir.offset+dir.size)
 	
 	return arr
 

@@ -336,7 +336,7 @@ func con_print_error(text):
 func con_thread(text, _node, _func, _args):
 	
 	while(true):
-		if thread_count >= 4:
+		if thread_count >= cvars["mt_num"].value:
 			OS.delay_msec(10)
 		else:
 			thread_count_mutex.lock()
@@ -353,7 +353,7 @@ func con_thread(text, _node, _func, _args):
 	
 	var _thread = Thread.new()
 	_thread.start(self, "_con_thread_func", userdata)
-	con_print("Thread: %s" % text)
+	con_print("[color=aqua][THREAD -- STARTED] -- %s [/color]" % str(text))
 	
 	return _thread
 	
@@ -373,7 +373,7 @@ func _con_thread_func(userdata):
 	var start = OS.get_ticks_msec()
 	var ret = _node.callv(_func, _args)
 	var end = OS.get_ticks_msec()
-	con_print("[color=blue][TIMED] -- %s %d ms[/color]" % [str(_text), end-start])
+	con_print("[color=blue][THREAD -- DONE] -- %s %d ms[/color]" % [str(_text), end-start])
 	
 	thread_count_mutex.lock()
 	thread_count -= 1
@@ -1279,6 +1279,24 @@ func _register_cvars():
 		min_value = 0,
 		max_value = 1
 	})
+	
+	register_cvar("mt", {
+		node = self,
+		description = "Activates/Deactivates the multitreading functionality.",
+		type = "int",
+		default_value = 1,
+		min_value = 0,
+		max_value = 1
+	})
+	
+	register_cvar("mt_num", {
+		node = self,
+		description = "Maximum number of parallel threads",
+		type = "int",
+		default_value = 4,
+		min_value = 0,
+		max_value = 128
+	})
 
 
 #                             __                  _   _                 
@@ -1363,10 +1381,20 @@ func _convar_console_ansi_color(value):
 func _convar_console_print_image_scale(value):
 	pass
 
+
 # Cache On/Off
 func _convar_cache(value):
 	pass
 
+
+# MultiThreading On/Off
+func _convar_mt(value):
+	pass
+
+
+# MultiThreading max num of threads
+func _convar_mt_num(value):
+	pass
 #     _          _ _                      _     
 # ___| |__   ___| | |   ___ _ __ ___   __| |___ 
 #/ __| '_ \ / _ \ | |  / __| '_ ` _ \ / _` / __|
