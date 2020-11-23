@@ -2,6 +2,7 @@ gdprogs/.import
 gdprogs/export_presets.cfg
 gdprogs/godot
 gdprogs/data/id1/
+gdprogs/data/id1-x/
 *.o
 *.PAK
 __pycache__

@@ -12,7 +12,7 @@ func _get_pack_entry(data, offset, number):
 	console.con_print(s)
 	
 	var sub = data.subarray(file_offset, file_offset + file_size-1)
-	var new_file_name = "user://data/" + file_name
+	var new_file_name = console.cvars["path_prefix"].value + "id-x/" + file_name
 	
 	var dir = Directory.new()
 	dir.make_dir_recursive( new_file_name.get_base_dir() )
@@ -73,7 +73,7 @@ func _ready():
 		args = "",
 		num_args = 0
 	})
-	
+
 
 
 func _confunc_pak_init():
@@ -111,3 +111,4 @@ func _confunc_pak_download():
 
 func _confunc_pak_decompress():
 	pass
+

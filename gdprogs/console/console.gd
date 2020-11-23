@@ -1297,6 +1297,22 @@ func _register_cvars():
 		min_value = 0,
 		max_value = 128
 	})
+	
+	register_cvar("devel_mode", {
+		node = self,
+		description = "Activates/Deactivates development mode.",
+		type = "int",
+		default_value =0,
+		min_value = 0,
+		max_value = 1
+	})
+	
+	register_cvar("path_prefix", {
+		node = self,
+		description = "Sets the global file path prefix.",
+		type = "str",
+		default_value ="user://data/",
+	})
 
 
 #                             __                  _   _                 
@@ -1394,6 +1410,14 @@ func _convar_mt(value):
 
 # MultiThreading max num of threads
 func _convar_mt_num(value):
+	pass
+
+
+func _conva_devel_mode(value):
+	pass
+
+
+func _convar_path_prefix(value):
 	pass
 #     _          _ _                      _     
 # ___| |__   ___| | |   ___ _ __ ___   __| |___ 
