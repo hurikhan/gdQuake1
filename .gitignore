@@ -1,6 +1,7 @@
 gdprogs/.import
 gdprogs/export_presets.cfg
 gdprogs/godot
+gdprogs/data/cache/
 gdprogs/data/id1/
 gdprogs/data/id1-x/
 *.o

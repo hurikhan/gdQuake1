@@ -322,6 +322,13 @@ func load_map(filename):
 		#var end = OS.get_ticks_msec()
 		#console.con_print("%d -- %d ms" % [i, end-start])
 		
+		var _path = console.cvars["path_prefix"].value + "cache/" + map.filename + "/Scenes/" + filename.get_file().get_basename() + "_" + str(i) + ".scn"
+		dir.make_dir_recursive( _path.get_base_dir() )
+		var scene = PackedScene.new()
+		scene.pack(bsp_meshes[i])
+		ResourceSaver.save(_path, scene, ResourceSaver.FLAG_BUNDLE_RESOURCES)
+		
+		
 	_end = OS.get_ticks_msec()
 	console.con_print("Converting BSP data in " + str(_end-_start) + " ms")
 
@@ -351,9 +358,6 @@ func _get_lightmap(data, dir, struct):
 	var arr = PoolByteArray()
 	arr.resize(dir.size)
 	
-	#print(dir)
-	
-	#var _data = data
 	
 	if dir.size != 0:
 		arr = data.subarray(dir.offset, dir.offset+dir.size)
@@ -369,8 +373,6 @@ func _get_entities(data, header):
 	
 	for e in entries:
 		var sub_e = e.split("\n")
-		
-		#print(sub_e)
 		
 		var entity = Dictionary()
 		
@@ -532,12 +534,17 @@ func _get_node(map, model_index):
 		t_index += 1
 	
 	var origin = Spatial.new()
+	origin.name = map.filename.get_file() + "_" + str(model_index)
+	
+	var i = 0
 	
 	for m in meshes:
 		var mi = MeshInstance.new()
+		mi.name = "mesh_" + str(i)
 		mi.set_mesh(meshes[m])
 		origin.add_child(mi)
 		mi.set_owner(origin)
+		i += 1
 	
 	return origin
 
@@ -561,7 +568,7 @@ func _get_tex(map, index):
 		
 		var dir = Directory.new()
 		
-		var path = "user://cache/" + map.filename + "/Textures/" + _name + ".tex"
+		var path = console.cvars["path_prefix"].value + "cache/" + map.filename + "/Textures/" + _name + ".tex"
 		
 		if ResourceLoader.exists(path) and console.cvars["cache"].value == 1:
 			var tex = ResourceLoader.load(path)
