@@ -1167,7 +1167,7 @@ func _confunc_ls(args):
 
 # Removes the whole cache directory.
 func _confunc_cache_clear():
-	var path = "user://cache/"
+	var path = cvars["path_prefix"].value + "cache/"
 	
 	var dir = Directory.new()
 	

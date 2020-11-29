@@ -13,7 +13,7 @@ func load_map(filename):
 	var _end = 0
 	
 	var dir = Directory.new()
-	var path = "user://cache/" + filename + "/map.res"	
+	var path = console.cvars["path_prefix"].value + "cache/" + filename + "/map.res"	
 	
 	if dir.file_exists(path) and console.cvars["cache"].value == 1:
 		var cache_file = File.new()
@@ -23,7 +23,7 @@ func load_map(filename):
 		
 	else:
 		var bsp_file = File.new()
-		bsp_file.open("user://data/" + filename, bsp_file.READ)
+		bsp_file.open(console.cvars["path_prefix"].value + "id1-x/" + filename, bsp_file.READ)
 		var data = bsp_file.get_buffer(bsp_file.get_len())
 		
 		# -----------------------------------------------------
@@ -300,7 +300,7 @@ func load_map(filename):
 		map = _map
 		
 		if console.cvars["cache"].value == 1:
-			var new_file_name = "user://cache/" + map.filename + "/"
+			var new_file_name = console.cvars["path_prefix"].value + "cache/" + map.filename + "/"
 			var dir2 = Directory.new()
 			dir2.make_dir_recursive( new_file_name.get_base_dir() )
 			
@@ -312,25 +312,15 @@ func load_map(filename):
 	map_loaded = true
 	
 	_end = OS.get_ticks_msec()
-	console.con_print("Parsing BSP data in " + str(_end-_start) + " ms")
+	console.con_print("Parsed BSP data in " + str(_end-_start) + " ms")
 	
 	_start = OS.get_ticks_msec()
 	
 	for i in range(len(map.models)):
-		#var start = OS.get_ticks_msec()
 		bsp_meshes.insert(i, _get_node(map, i))
-		#var end = OS.get_ticks_msec()
-		#console.con_print("%d -- %d ms" % [i, end-start])
-		
-		var _path = console.cvars["path_prefix"].value + "cache/" + map.filename + "/Scenes/" + filename.get_file().get_basename() + "_" + str(i) + ".scn"
-		dir.make_dir_recursive( _path.get_base_dir() )
-		var scene = PackedScene.new()
-		scene.pack(bsp_meshes[i])
-		ResourceSaver.save(_path, scene, ResourceSaver.FLAG_BUNDLE_RESOURCES)
-		
-		
+	
 	_end = OS.get_ticks_msec()
-	console.con_print("Converting BSP data in " + str(_end-_start) + " ms")
+	console.con_print("Generated/Loaded Models in " + str(_end-_start) + " ms")
 
 
 func _get_header(data, struct):
@@ -449,104 +439,124 @@ func _get_bbox(polygon, normal):
 		var st = vec.dot(normal)
 
 
+
 func _get_node(map, model_index):
-	var model = map.models[model_index]
-	var faces = map.faces
-	var ledges = map.ledges
-	var edges = map.edges
-	var vertices = map.vertices
-	var planes = map.planes
-	var texinfos = map.texinfos
-	var miptexs= map.miptexs
-	var tex = Dictionary()
-	var meshes = Dictionary()
 	
-	for f in range(model.face_id, model.face_id + model.face_num):
+	var dir = Directory.new()
+	var path = console.cvars["path_prefix"].value + "cache/" + map.filename + "/Models/Model_" + str(model_index) + ".tscn"
 	
-		var tex_key = faces[f].texinfo_id
-	
-		var v = PoolVector3Array()
-		var n = PoolVector3Array()
-		var st = PoolVector3Array()
-	
-		if not tex.has(tex_key):
-			tex[tex_key] = Dictionary()
+	if dir.file_exists(path) and console.cvars["cache"].value == 1:
+		#var origin = ResourceLoader.load(path)
+		var origin = load(path).instance()
+		return origin
+	else:
+		var model = map.models[model_index]
+		var faces = map.faces
+		var ledges = map.ledges
+		var edges = map.edges
+		var vertices = map.vertices
+		var planes = map.planes
+		var texinfos = map.texinfos
+		var miptexs= map.miptexs
+		var tex = Dictionary()
+		var meshes = Dictionary()
+		
+		for f in range(model.face_id, model.face_id + model.face_num):
+		
+			var tex_key = faces[f].texinfo_id
+		
+			var v = PoolVector3Array()
+			var n = PoolVector3Array()
+			var st = PoolVector3Array()
+		
+			if not tex.has(tex_key):
+				tex[tex_key] = Dictionary()
+				tex[tex_key].v = v
+				tex[tex_key].n = n
+				tex[tex_key].st = st
+			else:
+				v = tex[tex_key].v
+				n = tex[tex_key].n
+				st = tex[tex_key].st
+		
+			var normal = planes[faces[f].plane_id].normal
+								
+			var polygon = PoolVector3Array()
+			
+			for e in range(faces[f].ledge_id, faces[f].ledge_id + faces[f].ledge_num):
+				if ledges[e] > 0:
+					polygon.push_back(vertices[edges[ledges[e]].vertex0])
+				else:
+					polygon.push_back(vertices[edges[-ledges[e]].vertex1])
+			
+			if faces[f].side == 1:
+				normal = normal * -1
+			
+			var texinfo = texinfos[faces[f].texinfo_id]
+			var miptex = miptexs[texinfo.texture_id]
+			var triangles = _get_triangles(polygon, normal, texinfo, miptex)
+			v.append_array(triangles.vertices)
+			n.append_array(triangles.normals)
+			st.append_array(triangles.st)
+			
 			tex[tex_key].v = v
 			tex[tex_key].n = n
 			tex[tex_key].st = st
-		else:
-			v = tex[tex_key].v
-			n = tex[tex_key].n
-			st = tex[tex_key].st
-	
-		var normal = planes[faces[f].plane_id].normal
-							
-		var polygon = PoolVector3Array()
 		
-		for e in range(faces[f].ledge_id, faces[f].ledge_id + faces[f].ledge_num):
-			if ledges[e] > 0:
-				polygon.push_back(vertices[edges[ledges[e]].vertex0])
-			else:
-				polygon.push_back(vertices[edges[-ledges[e]].vertex1])
+		var t_index = 0
 		
-		if faces[f].side == 1:
-			normal = normal * -1
+		for t in tex:
 		
-		var texinfo = texinfos[faces[f].texinfo_id]
-		var miptex = miptexs[texinfo.texture_id]
-		var triangles = _get_triangles(polygon, normal, texinfo, miptex)
-		v.append_array(triangles.vertices)
-		n.append_array(triangles.normals)
-		st.append_array(triangles.st)
+			# Create mesh
+			var array = Array()
+			array.resize(9)
+			array[Mesh.ARRAY_VERTEX] = tex[t].v
+			array[Mesh.ARRAY_NORMAL] = tex[t].n
+			array[Mesh.ARRAY_TEX_UV] = tex[t].st
+			
+			#print("Mesh_%s_%s" % [str(model_index), str(t_index)])
+			
+			var mesh = ArrayMesh.new()
+			mesh.set_name("Tex_MeshInstance_" + str(t_index))
+			mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, array)
+			
+			var raw_tex = miptexs[texinfos[t].texture_id].raw_tex1
+			var w = miptexs[texinfos[t].texture_id].width
+			var h = miptexs[texinfos[t].texture_id].height
+			var mat_tex = _get_tex(map, texinfos[t].texture_id)
+			var mat = SpatialMaterial.new()
+
+			mat.set_texture(0, mat_tex)
+			
+			mesh.surface_set_material(0, mat)
+			mesh.surface_set_name(0, map.miptexs[texinfos[t].texture_id].name)
+			
+			meshes[t] = mesh
+			
+			t_index += 1
 		
-		tex[tex_key].v = v
-		tex[tex_key].n = n
-		tex[tex_key].st = st
-	
-	var t_index = 0
-	
-	for t in tex:
-	
-		# Create mesh
-		var array = Array()
-		array.resize(9)
-		array[Mesh.ARRAY_VERTEX] = tex[t].v
-		array[Mesh.ARRAY_NORMAL] = tex[t].n
-		array[Mesh.ARRAY_TEX_UV] = tex[t].st
+		var origin = Spatial.new()
+		origin.rotation_degrees = Vector3(-90,0,0)
+		origin.scale = Vector3(0.01,0.01,0.01)
+		origin.name = map.filename.get_file() + "_" + str(model_index)
 		
-		#print("Mesh_%s_%s" % [str(model_index), str(t_index)])
+		var i = 0
 		
-		var mesh = ArrayMesh.new()
-		mesh.set_name("Tex_MeshInstance_" + str(t_index))
-		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, array)
+		for m in meshes:
+			var mi = MeshInstance.new()
+			mi.name = "Mesh_" + str(i)
+			mi.set_mesh(meshes[m])
+			origin.add_child(mi)
+			mi.set_owner(origin)
+			i += 1
+
+		if console.cvars["cache"].value == 1:
+			dir.make_dir_recursive( path.get_base_dir() )
+			var scene = PackedScene.new()
+			scene.pack(origin)
+			ResourceSaver.save(path, scene)
 		
-		var raw_tex = miptexs[texinfos[t].texture_id].raw_tex1
-		var w = miptexs[texinfos[t].texture_id].width
-		var h = miptexs[texinfos[t].texture_id].height
-		var mat_tex = _get_tex(map, texinfos[t].texture_id)
-		var mat = SpatialMaterial.new()
-		mat.set_texture(0, mat_tex)
-		
-		mesh.surface_set_material(0, mat)
-		
-		meshes[t] = mesh
-		
-		t_index += 1
-	
-	var origin = Spatial.new()
-	origin.name = map.filename.get_file() + "_" + str(model_index)
-	
-	var i = 0
-	
-	for m in meshes:
-		var mi = MeshInstance.new()
-		mi.name = "mesh_" + str(i)
-		mi.set_mesh(meshes[m])
-		origin.add_child(mi)
-		mi.set_owner(origin)
-		i += 1
-	
-	return origin
+		return origin
 
 
 
@@ -572,6 +582,8 @@ func _get_tex(map, index):
 		
 		if ResourceLoader.exists(path) and console.cvars["cache"].value == 1:
 			var tex = ResourceLoader.load(path)
+			tex.resource_name = _name
+			tex.resource_path = path
 			bsp_textures[_name] = tex
 			return tex
 			
@@ -595,6 +607,8 @@ func _get_tex(map, index):
 			if console.cvars["cache"].value == 1:
 				bsp_textures[_name] = tex
 				dir.make_dir_recursive( path.get_base_dir() )
+				tex.resource_name = _name
+				tex.resource_path = path
 				ResourceSaver.save(path, tex)
 			
 			return tex
@@ -633,6 +647,9 @@ func _confunc_map(args):
 	map = Dictionary()
 	map_loaded = false
 	raw = Raw.new()
+	
+	bsp_meshes = Array()
+	bsp_textures = Dictionary()
 	
 	for c in $"/root/world/map".get_children():
 		$"/root/world/map".remove_child(c)
