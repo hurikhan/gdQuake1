@@ -521,14 +521,8 @@ func _get_meshes(map, model_index):
 			var w = miptexs[texinfos[t].texture_id].width
 			var h = miptexs[texinfos[t].texture_id].height
 			
-#			var mat_tex = _get_tex(map, texinfos[t].texture_id)
-#			var mat = SpatialMaterial.new()
-#			mat.set_texture(0, mat_tex)
-			
 			var shader_tex = _get_tex(map, texinfos[t].texture_id)
-			var shader_mat = ShaderMaterial.new()
-			shader_mat.shader = load("res://shader/unshaded.shader")
-			shader_mat.set_shader_param("tex", shader_tex)
+			var shader_mat = _get_shader_mat(map, texinfos[t].texture_id)
 			
 			mesh.surface_set_material(0, shader_mat)
 			mesh.surface_set_name(0, map.miptexs[texinfos[t].texture_id].name)
@@ -567,17 +561,25 @@ func _get_meshes(map, model_index):
 
 
 
+func _get_shader_mat(map, index):
+	var _name : String = _get_tex_name(map, index)
+	var shader_tex = bsp_textures[_name]
+	
+	var shader_mat = ShaderMaterial.new()
+	
+	if _name.begins_with("sky"):
+		shader_mat.shader = load("res://shader/sky.shader")
+	else:
+		shader_mat.shader = load("res://shader/unshaded.shader")
+		
+	shader_mat.set_shader_param("tex", shader_tex)
+	
+	return shader_mat
+
+
 func _get_tex(map, index):
 	
-	var _name = map.miptexs[index].name
-	
-	if _name.begins_with('*'):
-		_name.erase(0,1)
-		_name = "__asterisk__" + _name
-			
-	if _name.begins_with('+'):
-		_name.erase(0,1)
-		_name = "__plus__" + _name
+	var _name = _get_tex_name(map, index)
 	
 	if bsp_textures.has(_name) and console.cvars["cache"].value == 1:
 		return bsp_textures[_name]
@@ -619,6 +621,22 @@ func _get_tex(map, index):
 				ResourceSaver.save(path, tex)
 			
 			return tex
+
+
+
+func _get_tex_name(map, index):
+	var _name = map.miptexs[index].name
+	
+	if _name.begins_with('*'):
+		_name.erase(0,1)
+		_name = "__asterisk__" + _name
+			
+	if _name.begins_with('+'):
+		_name.erase(0,1)
+		_name = "__plus__" + _name
+	
+	return _name
+
 
 
 func _ready():
