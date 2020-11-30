@@ -579,7 +579,7 @@ func _get_shader_mat(map, index):
 
 func _get_tex(map, index):
 	
-	var _name = _get_tex_name(map, index)
+	var _name : String = _get_tex_name(map, index)
 	
 	if bsp_textures.has(_name) and console.cvars["cache"].value == 1:
 		return bsp_textures[_name]
@@ -612,6 +612,9 @@ func _get_tex(map, index):
 			image.unlock()
 			var tex = ImageTexture.new()
 			tex.create_from_image(image)
+			
+			if _name.begins_with("sky"):
+				tex.flags = ImageTexture.FLAG_REPEAT;
 			
 			if console.cvars["cache"].value == 1:
 				bsp_textures[_name] = tex
