@@ -11,6 +11,7 @@ near = 0.1
 far = 10000.0
 
 [node name="SpotLight" type="SpotLight" parent="Camera"]
+visible = false
 light_energy = 5.0
 spot_range = 1000.0
 spot_angle = 20.0
@@ -19,4 +20,3 @@ spot_angle = 20.0
 visible = false
 light_energy = 3.0
 omni_range = 3000.0
-

@@ -317,7 +317,7 @@ func load_map(filename):
 	_start = OS.get_ticks_msec()
 	
 	for i in range(len(map.models)):
-		bsp_meshes.insert(i, _get_node(map, i))
+		bsp_meshes.insert(i, _get_meshes(map, i))
 	
 	_end = OS.get_ticks_msec()
 	console.con_print("Generated/Loaded Models in " + str(_end-_start) + " ms")
@@ -440,13 +440,12 @@ func _get_bbox(polygon, normal):
 
 
 
-func _get_node(map, model_index):
+func _get_meshes(map, model_index):
 	
 	var dir = Directory.new()
-	var path = console.cvars["path_prefix"].value + "cache/" + map.filename + "/Models/Model_" + str(model_index) + ".tscn"
+	var path = console.cvars["path_prefix"].value + "cache/" + map.filename + "/models/model_" + str(model_index) + ".tscn"
 	
 	if dir.file_exists(path) and console.cvars["cache"].value == 1:
-		#var origin = ResourceLoader.load(path)
 		var origin = load(path).instance()
 		return origin
 	else:
@@ -514,21 +513,24 @@ func _get_node(map, model_index):
 			array[Mesh.ARRAY_NORMAL] = tex[t].n
 			array[Mesh.ARRAY_TEX_UV] = tex[t].st
 			
-			#print("Mesh_%s_%s" % [str(model_index), str(t_index)])
-			
 			var mesh = ArrayMesh.new()
-			mesh.set_name("Tex_MeshInstance_" + str(t_index))
+			mesh.set_name("mesh_array_" + str(t_index))
 			mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, array)
 			
 			var raw_tex = miptexs[texinfos[t].texture_id].raw_tex1
 			var w = miptexs[texinfos[t].texture_id].width
 			var h = miptexs[texinfos[t].texture_id].height
-			var mat_tex = _get_tex(map, texinfos[t].texture_id)
-			var mat = SpatialMaterial.new()
-
-			mat.set_texture(0, mat_tex)
 			
-			mesh.surface_set_material(0, mat)
+#			var mat_tex = _get_tex(map, texinfos[t].texture_id)
+#			var mat = SpatialMaterial.new()
+#			mat.set_texture(0, mat_tex)
+			
+			var shader_tex = _get_tex(map, texinfos[t].texture_id)
+			var shader_mat = ShaderMaterial.new()
+			shader_mat.shader = load("res://shader/unshaded.shader")
+			shader_mat.set_shader_param("tex", shader_tex)
+			
+			mesh.surface_set_material(0, shader_mat)
 			mesh.surface_set_name(0, map.miptexs[texinfos[t].texture_id].name)
 			
 			meshes[t] = mesh
@@ -538,18 +540,23 @@ func _get_node(map, model_index):
 		var origin = Spatial.new()
 		origin.rotation_degrees = Vector3(-90,0,0)
 		origin.scale = Vector3(0.01,0.01,0.01)
-		origin.name = map.filename.get_file() + "_" + str(model_index)
+		origin.name = "origin"
+		
+		var meshes_node = Spatial.new()
+		meshes_node.name = "meshes"
+		origin.add_child(meshes_node)
+		meshes_node.set_owner(origin)
 		
 		var i = 0
 		
 		for m in meshes:
 			var mi = MeshInstance.new()
-			mi.name = "Mesh_" + str(i)
+			mi.name = "mesh_" + str(i)
 			mi.set_mesh(meshes[m])
-			origin.add_child(mi)
+			meshes_node.add_child(mi)
 			mi.set_owner(origin)
 			i += 1
-
+		
 		if console.cvars["cache"].value == 1:
 			dir.make_dir_recursive( path.get_base_dir() )
 			var scene = PackedScene.new()
@@ -578,7 +585,7 @@ func _get_tex(map, index):
 		
 		var dir = Directory.new()
 		
-		var path = console.cvars["path_prefix"].value + "cache/" + map.filename + "/Textures/" + _name + ".tex"
+		var path = console.cvars["path_prefix"].value + "cache/" + map.filename + "/textures/" + _name + ".tex"
 		
 		if ResourceLoader.exists(path) and console.cvars["cache"].value == 1:
 			var tex = ResourceLoader.load(path)
@@ -641,6 +648,12 @@ func _ready():
 		num_args = 1
 	})
 
+#	console.register_command("bsp_lightmap_uv2", {
+#		node = self,
+#		description = "Generates the UV2 Coordinates for the whole map.",
+#		args = "",
+#		num_args = 0
+#	})
 
 func _confunc_map(args):
 	
@@ -675,10 +688,10 @@ func _confunc_map_info(args):
 func _load_icon(name, caption = "Caption!", text = ""):
 	var scene = preload("res://gfx/icons/Icon.tscn").instance()
 	scene.set_rotation_degrees(Vector3(90,0,0))
-
+	
 	#scene.get_node("Viewport/IconText/Caption").set_text(caption)
 	#scene.get_node("Viewport/IconText/Text").set_text(text)
-
+	
 	return scene
 
 
@@ -697,32 +710,49 @@ func _load_icon(name, caption = "Caption!", text = ""):
 
 
 func _confunc_bsp_entity_show(args):
-
-	var icons_node = $"/root/world/icons"
+	
+	var icons_node = $"/root/world/map/e1m1bsp_0"
 	var index_num = 0
 	var light_num = 0
-
+	
 	for i in map.entities:
-
+		
 		if i["classname"] == args[1]:
 			if i["classname"] == "light":
-
+				
 				var xyz = i["origin"].split(" ")
 				var x = float(xyz[0])
 				var y = float(xyz[1])
 				var z = float(xyz[2])
 				var origin = Vector3(x, y, z)
-
+				
 				var icon = _load_icon("sun", "[" + str(index_num) + "] light" + str(light_num))
 				icon.set_translation(origin)
 				icons_node.add_child(icon)
-
-#				var light = OmniLight.new()
-#				light.set_translation(origin)
-#				light.omni_range = 1000
-#				light.light_energy = 3
-#				icons_node.add_child(light)
-
+				
+#				if i.has("light"):
+#					var light = OmniLight.new()
+#					light.set_translation(origin)
+#					light.omni_range = 4
+#					light.light_energy = float(i["light"]) / 256.0
+#					icons_node.add_child(light)
+#					light.set_owner(icons_node)
+				
 				light_num += 1
-
+		
 		index_num += 1
+
+
+#func _confunc_bsp_lightmap_uv2():
+#	var meshes = $"/root/world/map/e1m1bsp_0/Meshes".get_children()
+#
+#	for mi in meshes:
+#		mi.mesh.lightmap_unwrap(mi.get_global_transform(), 0.025)
+#		mi.use_in_baked_light = true
+#
+#	var path = console.cvars["path_prefix"].value + "cache/maps/e1m1.bsp/Models/Lightmapped.tscn"
+#	var scene = PackedScene.new()
+#
+#	scene.pack($"/root/world/map/e1m1bsp_0")
+#	ResourceSaver.save(path, scene)
+	

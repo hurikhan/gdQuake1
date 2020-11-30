@@ -171,4 +171,4 @@ console_down={
 [rendering]
 
 threads/thread_model=2
-environment/default_environment="res://env.tres"
+limits/rendering/max_lights_per_object=512
