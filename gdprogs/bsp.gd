@@ -317,10 +317,11 @@ func load_map(filename):
 	_start = OS.get_ticks_msec()
 	
 	for i in range(len(map.models)):
-		bsp_meshes.insert(i, _get_meshes(map, i))
+		bsp_meshes.insert(i, _get_model(map, i))
 	
 	_end = OS.get_ticks_msec()
 	console.con_print("Generated/Loaded Models in " + str(_end-_start) + " ms")
+
 
 
 func _get_header(data, struct):
@@ -357,6 +358,20 @@ func _get_lightmap(data, dir, struct):
 
 
 func _get_entities(data, header):
+	
+	# Save entities.txt
+	var path = console.cvars["path_prefix"].value + "cache/" + "entities.txt"
+	
+	var _entities_txt = File.new()
+	var _dir = Directory.new()
+	_dir.make_dir_recursive( path.get_base_dir() )
+	
+	var file = File.new()
+	var err = file.open(path, file.WRITE)
+	file.store_buffer(data.subarray(header.entities.offset, header.entities.offset + header.entities.size))
+	file.close()
+	
+	# Create entities dictionary
 	var entities = Array()
 	var s : String = raw.get_string(data, header.entities.offset, header.entities.size)
 	var entries = s.split("{")
@@ -376,6 +391,17 @@ func _get_entities(data, header):
 				var name = i.substr(1, name_end-1)
 				
 				var value = i.substr(name_end + 3, len(i) - name_end - 4 ) 
+				
+				if name == "origin":
+					var xyz = value.split(" ")
+					var x = float(xyz[0])
+					var y = float(xyz[1])
+					var z = float(xyz[2])
+					value = Vector3(x, y, z)
+				
+				if name == "model":
+					if value.begins_with("*"):
+						value = int(value.substr(1, len(value)))
 				
 				entity[name] = value
 		
@@ -434,13 +460,13 @@ func _get_triangles(polygon, normal, texinfo, miptex):
 
 
 
-func _get_bbox(polygon, normal):
-	for vec in polygon:
-		var st = vec.dot(normal)
+#func _get_bbox(polygon, normal):
+#	for vec in polygon:
+#		var st = vec.dot(normal)
 
 
 
-func _get_meshes(map, model_index):
+func _get_model(map, model_index):
 	
 	var dir = Directory.new()
 	var path = console.cvars["path_prefix"].value + "cache/" + map.filename + "/models/model_" + str(model_index) + ".tscn"
@@ -561,22 +587,6 @@ func _get_meshes(map, model_index):
 
 
 
-func _get_shader_mat(map, index):
-	var _name : String = _get_tex_name(map, index)
-	var shader_tex = bsp_textures[_name]
-	
-	var shader_mat = ShaderMaterial.new()
-	
-	if _name.begins_with("sky"):
-		shader_mat.shader = load("res://shader/sky.shader")
-	else:
-		shader_mat.shader = load("res://shader/unshaded.shader")
-		
-	shader_mat.set_shader_param("tex", shader_tex)
-	
-	return shader_mat
-
-
 func _get_tex(map, index):
 	
 	var _name : String = _get_tex_name(map, index)
@@ -642,6 +652,44 @@ func _get_tex_name(map, index):
 
 
 
+func _get_shader_mat(map, index):
+	var _name : String = _get_tex_name(map, index)
+	var shader_tex = bsp_textures[_name]
+	
+	var shader_mat = ShaderMaterial.new()
+	
+	if _name.begins_with("sky"):
+		shader_mat.shader = load("res://shader/sky.shader")
+	else:
+		shader_mat.shader = load("res://shader/unshaded.shader")
+		
+	shader_mat.set_shader_param("tex", shader_tex)
+	
+	return shader_mat
+
+
+
+func _load_entities():
+	
+	var origin = $"/root/world/map/origin"
+	
+	var models_node = Spatial.new()
+	models_node.name = "entities"
+	models_node.set_owner(origin)
+	
+	for e in map.entities:
+		if e.has("model"):
+			console.con_print("%s -- model: %d" % [e.classname, e.model])
+			var model = _get_model(map, e.model)
+			model.name = "enity_model_%d" % e.model
+			model.rotation_degrees = Vector3(0, 0, 0)
+			model.scale = Vector3(1.0, 1.0, 1.0)
+			models_node.add_child(model)
+	
+	return models_node
+
+
+
 func _ready():
 	console.register_command("map", {
 		node = self,
@@ -649,6 +697,7 @@ func _ready():
 		args = "<Filename>",
 		num_args = 1
 	})
+	
 	console.register_command("map_info", {
 		node = self,
 		description = "Info about bsp entries.",
@@ -662,12 +711,13 @@ func _ready():
 #		args = "<Classname>",
 #		num_args = 1
 #	})
-	console.register_command("bsp_entity_show", {
-		node = self,
-		description = "Shows the entities with the specified classname",
-		args = "<Classname>",
-		num_args = 1
-	})
+
+#	console.register_command("bsp_entity_show", {
+#		node = self,
+#		description = "Shows the entities with the specified classname",
+#		args = "<Classname>",
+#		num_args = 1
+#	})
 
 #	console.register_command("bsp_lightmap_uv2", {
 #		node = self,
@@ -690,8 +740,13 @@ func _confunc_map(args):
 		c.queue_free()
 	
 	load_map("maps/%s" % args[1])
-	console.con_print_ok("maps/%s loaded." % args[1])
+
 	$"/root/world/map".add_child(bsp_meshes[0])
+	
+	var _entities = _load_entities()
+	$"/root/world/map/origin".add_child(_entities)
+
+	console.con_print_ok("maps/%s loaded." % args[1])
 
 
 func _confunc_map_info(args):
@@ -730,38 +785,38 @@ func _load_icon(name, caption = "Caption!", text = ""):
 #		num += 1
 
 
-func _confunc_bsp_entity_show(args):
-	
-	var icons_node = $"/root/world/map/e1m1bsp_0"
-	var index_num = 0
-	var light_num = 0
-	
-	for i in map.entities:
-		
-		if i["classname"] == args[1]:
-			if i["classname"] == "light":
-				
-				var xyz = i["origin"].split(" ")
-				var x = float(xyz[0])
-				var y = float(xyz[1])
-				var z = float(xyz[2])
-				var origin = Vector3(x, y, z)
-				
-				var icon = _load_icon("sun", "[" + str(index_num) + "] light" + str(light_num))
-				icon.set_translation(origin)
-				icons_node.add_child(icon)
-				
-#				if i.has("light"):
-#					var light = OmniLight.new()
-#					light.set_translation(origin)
-#					light.omni_range = 4
-#					light.light_energy = float(i["light"]) / 256.0
-#					icons_node.add_child(light)
-#					light.set_owner(icons_node)
-				
-				light_num += 1
-		
-		index_num += 1
+#func _confunc_bsp_entity_show(args):
+#
+#	var icons_node = $"/root/world/map/e1m1bsp_0"
+#	var index_num = 0
+#	var light_num = 0
+#
+#	for i in map.entities:
+#
+#		if i["classname"] == args[1]:
+#			if i["classname"] == "light":
+#
+#				var xyz = i["origin"].split(" ")
+#				var x = float(xyz[0])
+#				var y = float(xyz[1])
+#				var z = float(xyz[2])
+#				var origin = Vector3(x, y, z)
+#
+#				var icon = _load_icon("sun", "[" + str(index_num) + "] light" + str(light_num))
+#				icon.set_translation(origin)
+#				icons_node.add_child(icon)
+#
+##				if i.has("light"):
+##					var light = OmniLight.new()
+##					light.set_translation(origin)
+##					light.omni_range = 4
+##					light.light_energy = float(i["light"]) / 256.0
+##					icons_node.add_child(light)
+##					light.set_owner(icons_node)
+#
+#				light_num += 1
+#
+#		index_num += 1
 
 
 #func _confunc_bsp_lightmap_uv2():

@@ -172,3 +172,4 @@ console_down={
 
 threads/thread_model=2
 limits/rendering/max_lights_per_object=512
+quality/depth/hdr=false
