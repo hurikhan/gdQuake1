@@ -1,28 +1,32 @@
 shader_type spatial;
-
 render_mode unshaded;
+
+const vec3 TRANSPARENT = vec3(0.0, 0.0, 0.0);	// Black color is transparent
 
 uniform sampler2D tex : hint_albedo;
 
 
+
 void fragment() {
-	// Lower Clouds
-	float t1 = mod(TIME/16.0, 1.0);
-	float x1 = mod(UV.x + t1, 0.5);
-	vec2 UV_1 = vec2(x1, UV.y);
-	vec3 ALBEDO_1 = texture(tex, UV_1).xyz;
+	vec2 dir_UV = UV;
 	
-	// If lower clouds == black then
+	// lower clouds
+	float lc_t = mod(TIME/16.0, 1.0);
+	float lc_x = mod(dir_UV.x + lc_t, 0.5);
+	vec2 lc_UV = vec2(lc_x, dir_UV.y);
+	vec3 lc_ALBEDO = texture(tex, lc_UV).xyz;
+
+	// If lower clouds == TRANSPARENT(black) then
 	// render higher clouds
-	if (ALBEDO_1 == vec3(0.0, 0.0, 0.0)) {
-		// highe clouds
-		float t2 = mod(TIME/32.0, 1.0);
-		float x2 = mod(UV.x + t2, 0.5) + 0.5;
-		vec2 UV_2 = vec2(x2, UV.y);
-		vec3 ALBEDO_2 = texture(tex, UV_2).xyz;
-		ALBEDO = ALBEDO_2;
+	if (lc_ALBEDO == TRANSPARENT) {
+		// higher clouds
+		float hc_t = mod(TIME/32.0, 1.0);
+		float hc_x = mod(dir_UV.x + hc_t, 0.5) + 0.5;
+		vec2 hc_UV = vec2(hc_x, dir_UV.y);
+		vec3 hc_ALBEDO = texture(tex, hc_UV).xyz;
+		ALBEDO = hc_ALBEDO;
 	}
 	else {
- 		ALBEDO = ALBEDO_1;
+ 		ALBEDO = lc_ALBEDO;
 	}
 }
