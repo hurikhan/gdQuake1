@@ -679,7 +679,7 @@ func _load_entities():
 	
 	for e in map.entities:
 		if e.has("model"):
-			console.con_print("%s -- model: %d" % [e.classname, e.model])
+			#console.con_print("%s -- model: %d" % [e.classname, e.model])
 			var model = _get_model(map, e.model)
 			model.name = "enity_model_%d" % e.model
 			model.rotation_degrees = Vector3(0, 0, 0)
@@ -740,13 +740,13 @@ func _confunc_map(args):
 		c.queue_free()
 	
 	load_map("maps/%s" % args[1])
-
 	$"/root/world/map".add_child(bsp_meshes[0])
 	
 	var _entities = _load_entities()
 	$"/root/world/map/origin".add_child(_entities)
 
 	console.con_print_ok("maps/%s loaded." % args[1])
+
 
 
 func _confunc_map_info(args):

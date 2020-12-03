@@ -4,4 +4,3 @@
 
 [node name="client" type="Spatial"]
 script = ExtResource( 1 )
-
