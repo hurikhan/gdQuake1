@@ -392,7 +392,7 @@ func _get_entities(data, header):
 				
 				var value = i.substr(name_end + 3, len(i) - name_end - 4 ) 
 				
-				if name == "origin":
+				if name == "origin" or name == "mangle":
 					var xyz = value.split(" ")
 					var x = float(xyz[0])
 					var y = float(xyz[1])
@@ -669,28 +669,67 @@ func _get_shader_mat(map, index):
 
 
 
+
+
+
+
 func _load_entities():
+	
+	progs.load_progs("progs.dat")
 	
 	var origin = $"/root/world/map/origin"
 	
-	var models_node = Spatial.new()
-	models_node.name = "entities"
-	models_node.set_owner(origin)
+	var entities_node = Spatial.new()
+	entities_node.name = "entities"
+	#entities.set_owner(origin)
+	
+	$"/root/world/map/origin".add_child(entities_node)
+	
+	#var worldspawn = map.entities["worldspawn"]
+	
+	
+	
 	
 	for e in map.entities:
-		if e.has("model"):
-			#console.con_print("%s -- model: %d" % [e.classname, e.model])
-			var model = _get_model(map, e.model)
-			model.name = "enity_model_%d" % e.model
-			model.rotation_degrees = Vector3(0, 0, 0)
-			model.scale = Vector3(1.0, 1.0, 1.0)
-			models_node.add_child(model)
+		if e.has("classname"):
+			
+			var entity = entities.spawn()
+			var evar = entity.get_meta("entvars")
+			
+			if e.classname == "worldspawn":
+				evar.model = map.filename
+				
+#			if e.classname == "worldspawn" or e.classname.begins_with("func_"):
+			
+			for key in e:
+				if key in evar:
+					evar[key] = e[key]
+					
+			
+			progs.set_global_by_name("self", entity.get_instance_id())
+			progs.set_global_by_name("world", entity.get_instance_id())
+			progs.exec(e.classname)
+
 	
-	return models_node
+#	print(entity.get_meta("entvars").classname)
+	
+#	for e in map.entities:
+#		if e.has("model"):
+#			#console.con_print("%s -- model: %d" % [e.classname, e.model])
+#			var model = _get_model(map, e.model)
+#			model.name = "enity_model_%d" % e.model
+#			model.rotation_degrees = Vector3(0, 0, 0)
+#			model.scale = Vector3(1.0, 1.0, 1.0)
+#			models_node.add_child(model)
+	
+	
+	
+	return entities
 
 
 
 func _ready():
+	
 	console.register_command("map", {
 		node = self,
 		description = "Loads a bsp map.",
@@ -743,7 +782,7 @@ func _confunc_map(args):
 	$"/root/world/map".add_child(bsp_meshes[0])
 	
 	var _entities = _load_entities()
-	$"/root/world/map/origin".add_child(_entities)
+	#$"/root/world/map/origin".add_child(_entities)
 
 	console.con_print_ok("maps/%s loaded." % args[1])
 

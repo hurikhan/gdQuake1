@@ -29,6 +29,8 @@ parser_v2="*res://parser_v2.gd"
 parser_v3="*res://parser_v3.gd"
 bsp="*res://bsp.gd"
 progs="*res://progs.gd"
+entities="*res://entities.gd"
+cvars="*res://q1/cvars.gd"
 
 [debug]
 
