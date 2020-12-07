@@ -7,10 +7,14 @@ var map = Dictionary()
 var map_loaded = false
 var raw = Raw.new()
 
+var mutex_map_data = Mutex.new()
+var mutex_tscn_loading = Mutex.new()
+var mutex_tex_loading = Mutex.new()
+var mutex_mesh_saving = Mutex.new()
+
 func load_map(filename):
 	
-	var _start = OS.get_ticks_msec()
-	var _end = 0
+	var timer_bsp_parsing = console.con_timer_create()
 	
 	var dir = Directory.new()
 	var path = console.cvars["path_prefix"].value + "cache/" + filename + "/map.res"	
@@ -175,7 +179,7 @@ func load_map(filename):
 		
 		# -----------------------------------------------------
 		# lface_t
-		# -----------------------------------------------------	
+		# -----------------------------------------------------
 		var lface_t = parser_v2.create("lface_t")
 		lface_t.add("lface",		parser_v2.T_U16			)
 		# mode
@@ -184,7 +188,7 @@ func load_map(filename):
 		
 		# -----------------------------------------------------
 		# lightmap_t
-		# -----------------------------------------------------	
+		# -----------------------------------------------------
 		var lightmap_t = parser_v2.create("lightmap_t")
 		lightmap_t.add("lightmap",		parser_v2.T_U8			)
 		# mode
@@ -192,7 +196,7 @@ func load_map(filename):
 		
 		# -----------------------------------------------------
 		# ledge_t
-		# -----------------------------------------------------	
+		# -----------------------------------------------------
 		var ledge_t = parser_v2.create("ledge_t")
 		ledge_t.add("ledge",		parser_v2.T_I32			)
 		# mode
@@ -200,7 +204,7 @@ func load_map(filename):
 		
 		# -----------------------------------------------------
 		# visilist_t
-		# -----------------------------------------------------	
+		# -----------------------------------------------------
 		var visilist_t = parser_v2.create("visilist_t")
 		visilist_t.add("visilist_t",		parser_v2.T_U8	)
 		# mode
@@ -216,7 +220,7 @@ func load_map(filename):
 		
 		# -----------------------------------------------------
 		# clipnode_t
-		# -----------------------------------------------------	
+		# -----------------------------------------------------
 		var clipnode_t = parser_v2.create("clipnode_t")
 		clipnode_t.add("planenum",		parser_v2.T_U32		)
 		clipnode_t.add("front",			parser_v2.T_I16		)
@@ -224,7 +228,7 @@ func load_map(filename):
 		
 		# -----------------------------------------------------
 		# eval 
-		# -----------------------------------------------------	
+		# -----------------------------------------------------
 		
 		var _map = Dictionary()
 		
@@ -253,43 +257,41 @@ func load_map(filename):
 		
 		else:
 		
-			#FIXME: Should work all in parallel
-			# --> Rewrite of parser to use FILE capabilities only
-			# --> remove RAW module
+			#FIXME: check _thread_leaves - does not work in multi threading
 			
 			var _thread_entities = console.con_thread("entities", self, "_get_entities", [data, header]) 
 			var _thread_planes = console.con_thread("planes",self,"_get_entries",[data, header.planes, plane_t])
 			var _thread_miptexs = console.con_thread("miptexs",self,"_get_miptexs",[data, header, mipheader_t, miptex_t])
 			var _thread_vertices = console.con_thread("vertices",self,"_get_entries",[data, header.vertices, vertex_t])
 			
-			_map.entities = console.con_thread_wait(_thread_entities)
-			_map.planes = console.con_thread_wait(_thread_planes)
-			_map.miptexs = console.con_thread_wait(_thread_miptexs)
-			_map.vertices = console.con_thread_wait(_thread_vertices)
-			
 			var _thread_visilist = console.con_thread("visilist",self,"_get_entries",[data, header.visilist, visilist_t])
 			var _thread_nodes = console.con_thread("nodes",self,"_get_entries",[data, header.nodes, node_t])
 			var _thread_texinfos = console.con_thread("texinfos",self,"_get_entries",[data, header.texinfo, texinfo_t])
 			var _thread_faces = console.con_thread("faces",self,"_get_entries",[data, header.faces, face_t])
+			
+			var _thead_lightmaps = console.con_thread("lightmaps",self,"_get_lightmap",[data, header.lightmaps, lightmap_t])
+			var _thread_clipnodes = console.con_thread("clipnodes",self,"_get_entries",[data, header.clipnodes, clipnode_t])
+#			var _thread_leaves = console.con_thread("leaves",self,"_get_entries",[data, header.leaves, dleaf_t])
+			var _thread_lfaces = console.con_thread("lfaces",self,"_get_entries",[data, header.lfaces, lface_t])
+			
+			var _thread_edges = console.con_thread("edges",self,"_get_entries",[data, header.edges, edge_t])
+			var _thread_ledges = console.con_thread("ledges",self,"_get_entries",[data, header.ledges, ledge_t])
+			var _thead_models = console.con_thread("models",self,"_get_entries",[data, header.models, model_t])
+			
+			_map.entities = console.con_thread_wait(_thread_entities)
+			_map.planes = console.con_thread_wait(_thread_planes)
+			_map.miptexs = console.con_thread_wait(_thread_miptexs)
+			_map.vertices = console.con_thread_wait(_thread_vertices)
 			
 			_map.visilist = console.con_thread_wait(_thread_visilist)
 			_map.nodes = console.con_thread_wait(_thread_nodes)
 			_map.texinfos = console.con_thread_wait(_thread_texinfos)
 			_map.faces = console.con_thread_wait(_thread_faces)
 			
-			var _thead_lightmaps = console.con_thread("lightmaps",self,"_get_lightmap",[data, header.lightmaps, lightmap_t])
-			var _thread_clipnodes = console.con_thread("clipnodes",self,"_get_entries",[data, header.clipnodes, clipnode_t])
-			var _thread_leaves = console.con_thread("leaves",self,"_get_entries",[data, header.leaves, dleaf_t])
-			var _thread_lfaces = console.con_thread("lfaces",self,"_get_entries",[data, header.lfaces, lface_t])
-			
 			_map.lightmaps = console.con_thread_wait(_thead_lightmaps)
 			_map.clipnodes = console.con_thread_wait(_thread_clipnodes)
-			_map.leaves = console.con_thread_wait(_thread_leaves)
+#			_map.leaves = console.con_thread_wait(_thread_leaves)
 			_map.lfaces = console.con_thread_wait(_thread_lfaces)
-			
-			var _thread_edges = console.con_thread("edges",self,"_get_entries",[data, header.edges, edge_t])
-			var _thread_ledges = console.con_thread("ledges",self,"_get_entries",[data, header.ledges, ledge_t])
-			var _thead_models = console.con_thread("models",self,"_get_entries",[data, header.models, model_t])
 			
 			_map.edges = console.con_thread_wait(_thread_edges)
 			_map.ledges = console.con_thread_wait(_thread_ledges)
@@ -311,16 +313,32 @@ func load_map(filename):
 		
 	map_loaded = true
 	
-	_end = OS.get_ticks_msec()
-	console.con_print("Parsed BSP data in " + str(_end-_start) + " ms")
+	timer_bsp_parsing.print("Parsed BSP data in ")
 	
-	_start = OS.get_ticks_msec()
+	var timer_model_parsing = console.con_timer_create()
 	
-	for i in range(len(map.models)):
-		bsp_meshes.insert(i, _get_model(map, i))
+	if console.cvars["mt"].value == 0:
+		# -----------------------------------------------------
+		# single thread bsp model loading 
+		# -----------------------------------------------------
+		for i in range(len(map.models)):
+			bsp_meshes.insert(i, _get_model(map, i))
+		
+	else:
+		# -----------------------------------------------------
+		# multi thread bsp model loading 
+		# -----------------------------------------------------
+		var threads = {}
+		var models_num : int = len(map.models)
+		var steps : int = 4							# FIXME: >1 crashes... 
+		
+		for i in range(0, models_num):
+			threads[i] = console.con_thread("model %d" % [i], self, "_get_model",[map, i])
+			
+		for i in range(0, models_num):
+			bsp_meshes.insert(i, console.con_thread_wait( threads[i] ) )
 	
-	_end = OS.get_ticks_msec()
-	console.con_print("Generated/Loaded Models in " + str(_end-_start) + " ms")
+	timer_model_parsing.print("Generated/Loaded Models in ")
 
 
 
@@ -472,7 +490,9 @@ func _get_model(map, model_index):
 	var path = console.cvars["path_prefix"].value + "cache/" + map.filename + "/models/model_" + str(model_index) + ".tscn"
 	
 	if dir.file_exists(path) and console.cvars["cache"].value == 1:
+		mutex_tscn_loading.lock()
 		var origin = load(path).instance()
+		mutex_tscn_loading.unlock()
 		return origin
 	else:
 		var model = map.models[model_index]
@@ -547,11 +567,16 @@ func _get_model(map, model_index):
 			var w = miptexs[texinfos[t].texture_id].width
 			var h = miptexs[texinfos[t].texture_id].height
 			
+			mutex_tex_loading.lock()
+			
 			var shader_tex = _get_tex(map, texinfos[t].texture_id)
 			var shader_mat = _get_shader_mat(map, texinfos[t].texture_id)
 			
+			mutex_tex_loading.unlock()
+			
 			mesh.surface_set_material(0, shader_mat)
 			mesh.surface_set_name(0, map.miptexs[texinfos[t].texture_id].name)
+			
 			
 			meshes[t] = mesh
 			
@@ -577,11 +602,17 @@ func _get_model(map, model_index):
 			mi.set_owner(origin)
 			i += 1
 		
+
 		if console.cvars["cache"].value == 1:
 			dir.make_dir_recursive( path.get_base_dir() )
 			var scene = PackedScene.new()
 			scene.pack(origin)
+			
+			mutex_mesh_saving.lock()
 			ResourceSaver.save(path, scene)
+			mutex_mesh_saving.unlock()
+			
+		
 		
 		return origin
 
@@ -687,9 +718,6 @@ func _load_entities():
 	
 	#var worldspawn = map.entities["worldspawn"]
 	
-	
-	
-	
 	for e in map.entities:
 		if e.has("classname"):
 			
@@ -701,14 +729,17 @@ func _load_entities():
 				
 #			if e.classname == "worldspawn" or e.classname.begins_with("func_"):
 			
-			for key in e:
-				if key in evar:
-					evar[key] = e[key]
-					
-			
-			progs.set_global_by_name("self", entity.get_instance_id())
-			progs.set_global_by_name("world", entity.get_instance_id())
-			progs.exec(e.classname)
+				for key in e:
+					if key in evar:
+						evar[key] = e[key]
+						
+				
+				progs.set_global_by_name("self", entity.get_instance_id())
+				progs.set_global_by_name("world", entity.get_instance_id())
+				
+				var timer_exec = console.con_timer_create()
+				progs.exec(e.classname)
+				timer_exec.print("Executed %s in " % e.classname)
 
 	
 #	print(entity.get_meta("entvars").classname)

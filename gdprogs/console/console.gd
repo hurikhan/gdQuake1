@@ -354,17 +354,22 @@ func con_print_debug(level : int, format_string : String, format_vars : Array = 
 
 
 func _get_source():
-	var call_stack = get_stack()[2]
-	var source = call_stack.source.get_file()
 	
-	var ret = source.split(".")[0].to_upper() 
-	
-	if _debug_location == 1:
-		var function = call_stack.function
-		var line = call_stack.line
-		ret += " %s:%d" % [function, line]
-	
-	return ret
+	if OS.is_debug_build():
+		print("call_stack")
+		var call_stack = get_stack()[2]
+		var source = call_stack.source.get_file()
+		
+		var ret = source.split(".")[0].to_upper() 
+		
+		if _debug_location == 1:
+			var function = call_stack.function
+			var line = call_stack.line
+			ret += " %s:%d" % [function, line]
+		
+		return ret
+	else:
+		return "NO_DEBUG_BUILD"
 
 
 func con_thread(text, _node, _func, _args):
@@ -387,7 +392,9 @@ func con_thread(text, _node, _func, _args):
 	
 	var _thread = Thread.new()
 	_thread.start(self, "_con_thread_func", userdata)
-	con_print("[color=aqua][THREAD -- STARTED] -- %s [/color]" % str(text))
+	
+	if cvars["mt_debug"].value == 1:
+		con_print("[color=aqua][THREAD -- STARTED] -- %s [/color]" % str(text))
 	
 	return _thread
 	
@@ -407,7 +414,9 @@ func _con_thread_func(userdata):
 	var start = OS.get_ticks_msec()
 	var ret = _node.callv(_func, _args)
 	var end = OS.get_ticks_msec()
-	con_print("[color=blue][THREAD -- DONE] -- %s %d ms[/color]" % [str(_text), end-start])
+	
+	if cvars["mt_debug"].value == 1:
+		con_print("[color=blue][THREAD -- DONE] -- %s %d ms[/color]" % [str(_text), end-start])
 	
 	thread_count_mutex.lock()
 	thread_count -= 1
@@ -415,6 +424,28 @@ func _con_thread_func(userdata):
 	
 	return ret
 
+
+func con_timer_create():
+	var timer = _timer.new()
+	timer.init(self)
+	return timer
+
+
+class _timer:
+	
+	var time_start : int = 0
+	var time_end : int = 0
+	var this : Object
+	
+	func _init():
+		time_start = OS.get_ticks_msec()
+	
+	func init(obj):
+		this = obj
+	
+	func print(text):
+		time_end = OS.get_ticks_msec()
+		this.con_print(text + "[%d ms]" % [time_end - time_start])
 
 
 func con_print_array(arr):
@@ -1332,6 +1363,15 @@ func _register_cvars():
 		max_value = 128
 	})
 	
+	register_cvar("mt_debug", {
+		node = self,
+		description = "Activates/deactivates the debug print for multi threading. 1:ON 0: OFF",
+		type = "int",
+		default_value = 0,
+		min_value = 0,
+		max_value = 1
+	})
+	
 	register_cvar("debug_level", {
 		node = self,
 		description = "Set the debug output level. 0: deactivated, 1: DEBUG_LOW, 2: DEBUG_MEDIUM, 3: DEBUG_HIGH",
@@ -1453,6 +1493,10 @@ func _convar_mt(value):
 
 # MultiThreading max num of threads
 func _convar_mt_num(value):
+	pass
+
+
+func _convar_mt_debug(value):
 	pass
 
 
