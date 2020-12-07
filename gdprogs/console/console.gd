@@ -31,6 +31,8 @@ const CONSOLE_STATE_OPENED = 0
 const CONSOLE_STATE_FADING = 1
 const CONSOLE_STATE_CLOSED = 2
 
+enum {DEBUG_NONE, DEBUG_LOW, DEBUG_MEDIUM, DEBUG_HIGH}
+
 var ansi_support = false
 
 var state = CONSOLE_STATE_CLOSED
@@ -38,6 +40,9 @@ var busy = false
 
 var thread_count = 0
 var thread_count_mutex = Mutex.new()
+
+var debug_level : int = 0		# console var
+var _debug_location : int = 0	# console var
 
 #                    _       
 # _ __ ___  __ _  __| |_   _ 
@@ -328,9 +333,38 @@ func con_print_warn(text : String):
 	con_print("[color=yellow][WARN]  -- %s[/color]" % text)
 
 
-func con_print_error(text):
+func con_print_error(text : String):
 	# red text
-	con_print("[color=red][ERROR] -- %s[/color]" % str(text))
+	con_print("[color=red][ERROR] -- %s[/color]" % text)
+
+
+func con_print_debug(level : int, format_string : String, format_vars : Array = []):
+	if level <= debug_level:
+		
+		var text = format_string % format_vars
+		var source = _get_source()
+		
+		match level:
+			DEBUG_LOW:
+				con_print("[color=aqua][DEBUG L%d] [%s]  %s[/color]" % [level, source, text])
+			DEBUG_MEDIUM:
+				con_print("[color=blue][DEBUG L%d] [%s]  %s[/color]" % [level, source, text])
+			DEBUG_HIGH:
+				con_print("[color=green][DEBUG L%d] [%s]  %s[/color]" % [level, source, text])
+
+
+func _get_source():
+	var call_stack = get_stack()[2]
+	var source = call_stack.source.get_file()
+	
+	var ret = source.split(".")[0].to_upper() 
+	
+	if _debug_location == 1:
+		var function = call_stack.function
+		var line = call_stack.line
+		ret += " %s:%d" % [function, line]
+	
+	return ret
 
 
 func con_thread(text, _node, _func, _args):
@@ -1298,9 +1332,18 @@ func _register_cvars():
 		max_value = 128
 	})
 	
-	register_cvar("devel_mode", {
+	register_cvar("debug_level", {
 		node = self,
-		description = "Activates/Deactivates development mode.",
+		description = "Set the debug output level. 0: deactivated, 1: DEBUG_LOW, 2: DEBUG_MEDIUM, 3: DEBUG_HIGH",
+		type = "int",
+		default_value =0,
+		min_value = 0,
+		max_value = 3
+	})
+	
+	register_cvar("debug_location", {
+		node = self,
+		description = "Switches the debug print location information (function:line) 1: ON or 0: OFF.",
 		type = "int",
 		default_value =0,
 		min_value = 0,
@@ -1413,8 +1456,12 @@ func _convar_mt_num(value):
 	pass
 
 
-func _conva_devel_mode(value):
-	pass
+func _convar_debug_level(value):
+	debug_level = value
+
+
+func _convar_debug_location(value):
+	_debug_location = value
 
 
 func _convar_path_prefix(value):

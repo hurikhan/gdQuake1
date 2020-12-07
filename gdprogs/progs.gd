@@ -101,17 +101,13 @@ func load_progs(filename):
 		
 		if console.cvars["cache"].value == 1:
 			dir.make_dir_recursive( path.get_base_dir() )
-
+			
 			var cache_file = File.new()
 			var err = cache_file.open(path, File.WRITE)
 			cache_file.store_var(progs, true)
 			cache_file.close()
 	
 	_generate_entvars_script()
-	
-	for k in progs.dprograms:
-		var line = "%s -- %s" % [k, progs.dprograms[k]]
-		console.con_print(line)
 	
 	console.con_print_ok("%s loaded." % filename)
 
@@ -123,15 +119,20 @@ func load_progs(filename):
 func _get_dprograms(struct):
 	progs.dprograms = struct.eval(0)
 	
-	console.con_print("----------------------------------")
-	console.con_print(".dat")
-	console.con_print("----------------------------------")
-	
-	for k in progs.dprograms:
-		var line = "%s -- %s" % [k, progs.dprograms[k]]
-		console.con_print(line)
-	
-	console.con_print("")
+	# -----------------------------------------------------
+	# debug print DEBUG_LOW
+	# -----------------------------------------------------
+	if console.debug_level >= console.DEBUG_LOW:
+		
+		console.con_print_debug(console.DEBUG_LOW, "----------------------------------")
+		console.con_print_debug(console.DEBUG_LOW, ".dat")
+		console.con_print_debug(console.DEBUG_LOW, "----------------------------------")
+		
+		for k in progs.dprograms:
+			var line = "%s -- %s" % [k, progs.dprograms[k]]
+			console.con_print_debug(console.DEBUG_LOW, line)
+		
+		console.con_print_debug(console.DEBUG_LOW, "")
 
 
 
@@ -149,31 +150,36 @@ func _get_strings():
 	while parser_v3.get_offset() < end:
 		var key = parser_v3.get_offset() - offset
 		var s = parser_v3.get_string()
-
+		
 		sdict[key] = s
 	
 	progs.strings = sdict
 	
-	console.con_print("----------------------------------")
-	console.con_print("strings")
-	console.con_print("----------------------------------")
-	
-#	# ------------------------------------
-#	# debug print
-#	# ------------------------------------
-#	for k in sdict:
-#		var line = "%s -- %s" % [k, sdict[k]]
-#		console.con_print(line)
-#
-#	var s_max = 0
-#	for v in sdict.values():
-#		var length = v.length()
-#		if length > s_max:
-#			s_max = length
-#	console.con_print("Biggest string length: %d" % s_max)
-	
-	console.con_print("%d strings loaded." % sdict.size())
-	console.con_print("")
+	# ------------------------------------
+	# debug print DEBUG_LOW
+	# ------------------------------------
+	if console.debug_level >= console.DEBUG_LOW:
+		console.con_print_debug(console.DEBUG_LOW, "----------------------------------")
+		console.con_print_debug(console.DEBUG_LOW, "strings")
+		console.con_print_debug(console.DEBUG_LOW, "----------------------------------")
+		
+		# ------------------------------------
+		# debug print DEBUG_HIGH
+		# ------------------------------------
+		if console.debug_level >= console.DEBUG_HIGH:
+			for k in sdict:
+				var line = "%s -- %s" % [k, sdict[k]]
+				console.con_print_debug(console.DEBUG_HIGH, line)
+			
+			var s_max = 0
+			for v in sdict.values():
+				var length = v.length()
+				if length > s_max:
+					s_max = length
+			console.con_print_debug(console.DEBUG_HIGH,"Biggest string length: %d" % s_max)
+		
+		console.con_print_debug(console.DEBUG_LOW, "%d strings loaded." % sdict.size())
+		console.con_print_debug(console.DEBUG_LOW, "")
 
 
 
@@ -184,7 +190,6 @@ func _get_globaldefs(struct):
 	var struct_size = struct.get_size()
 	var offset = progs.dprograms.ofs_globaldefs + struct_size
 	var num = progs.dprograms.num_globaldefs
-	
 	
 	var globaldefs = Dictionary()
 	var globals_by_name = Dictionary()
@@ -210,32 +215,6 @@ func _get_globaldefs(struct):
 		
 		if def.savegame:
 			def.type -= 0x8000
-		
-#		# ------------------------------------
-#		# Get value
-#		# ------------------------------------
-#		var value_offset = progs.dprograms.ofs_globals + (def.offset * 4)
-#
-#		var value
-#
-#		match def.type:
-#			EV_FLOAT:
-#				value = _raw.get_f32(data, value_offset)
-#			EV_VECTOR:
-#				var x = _raw.get_f32(data, value_offset)
-#				var y = _raw.get_f32(data, value_offset + 4)
-#				var z = _raw.get_f32(data, value_offset + 8)
-#				value = Vector3(x, y, z)
-#			EV_STRING:
-#				var first_char = _raw.get_u8(data, value_offset)
-#				if first_char == 0:
-#					value = ""
-#				else:
-#					value = _raw.get_string(data, value_offset, 256)
-#			_:
-#				value = _raw.get_u32(data, value_offset)
-#
-#		def.value = value
 		
 		# ------------------------------------
 		# Add dict entry
@@ -279,31 +258,36 @@ func _get_globaldefs(struct):
 	
 	progs.globals = globals
 	
-	console.con_print("----------------------------------")
-	console.con_print("globaldefs")
-	console.con_print("----------------------------------")
-	
-#	# ------------------------------------
-#	# debug print
-#	# ------------------------------------
-#	i = 0
-#
-#	for k in progs.globaldefs:
-#		var type = progs.globaldefs[k].type
-#		var s_name = progs.globaldefs[k].s_name
-#		var line = ""
-#
-#		line = "%s -- %s -- %s" % [ str(k), _get_type_sting(type), s_name  ]
-#
-#		console.con_print(line)
-#		i += 1
-#
-#		if i > 100:
-#			break
-	
-	console.con_print("%d globaldefs loaded." % num)
-	console.con_print("")
-
+	# ------------------------------------
+	# debug print DEBUG_LOW
+	# ------------------------------------
+	if console.debug_level >= console.DEBUG_LOW:
+		console.con_print_debug(console.DEBUG_LOW, "----------------------------------")
+		console.con_print_debug(console.DEBUG_LOW, "globaldefs")
+		console.con_print_debug(console.DEBUG_LOW, "----------------------------------")
+		
+		# ------------------------------------
+		# debug print DEBUG_HIGH
+		# ------------------------------------
+		if console.debug_level >= console.DEBUG_HIGH:
+			
+			i = 0
+			
+			for k in progs.globaldefs:
+				var type = progs.globaldefs[k].type
+				var s_name = progs.globaldefs[k].s_name
+				var line = ""
+				
+				line = "%s -- %s -- %s" % [ str(k), _get_type_sting(type), s_name  ]
+				
+				console.con_print_debug(console.DEBUG_HIGH, line)
+				i += 1
+				
+#				if i > 100:
+#					break
+		
+		console.con_print_debug(console.DEBUG_LOW, "%d globaldefs loaded." % num)
+		console.con_print_debug(console.DEBUG_LOW, "")
 
 
 
@@ -338,28 +322,6 @@ func _get_fielddefs(struct):
 		if def.savegame:
 			def.type -= 0x8000
 		
-#		# ------------------------------------
-#		# Get value
-#		# ------------------------------------
-#		var value_offset = progs.dprograms.ofs_fielddefs + (def.offset * 4)
-#
-#		var value
-#
-#		match def.type:
-#			EV_FLOAT:
-#				value = _raw.get_f32(data, value_offset)
-#			EV_VECTOR:
-#				var x = _raw.get_f32(data, value_offset)
-#				var y = _raw.get_f32(data, value_offset + 4)
-#				var z = _raw.get_f32(data, value_offset + 8)
-#				value = Vector3(x, y, z)
-#			EV_STRING:
-#				value = ""
-#			_:
-#				value = _raw.get_u32(data, value_offset)
-#
-#		def.value = value
-		
 		# ------------------------------------
 		# Cleanup + add dict entry
 		# ------------------------------------
@@ -388,30 +350,36 @@ func _get_fielddefs(struct):
 	# ------------------------------------
 	progs.fielddefs = fielddefs
 	
-	console.con_print("----------------------------------")
-	console.con_print("fielddefs")
-	console.con_print("----------------------------------")
+	# ------------------------------------
+	# debug print DEBUG_LOW
+	# ------------------------------------
+	if console.debug_level >= console.DEBUG_LOW:
+		console.con_print_debug(console.DEBUG_LOW, "----------------------------------")
+		console.con_print_debug(console.DEBUG_LOW, "fielddefs")
+		console.con_print_debug(console.DEBUG_LOW, "----------------------------------")
+		
+		# ------------------------------------
+		# debug print DEBUG_HIGH
+		# ------------------------------------
+		if console.debug_level >= console.DEBUG_HIGH:
+			
+			i = 0
+			
+			for k in progs.fielddefs:
+				var type = progs.fielddefs[k].type
+				var s_name = progs.fielddefs[k].s_name
+				var line = ""
+				
+				line = "%s -- %s -- %s" % [ str(k), _get_type_sting(type), s_name  ]
+				
+				console.con_print_debug(console.DEBUG_HIGH, line)
+				i += 1
+				
+#				if i > 100:
+#					break
 	
-#	# ------------------------------------
-#	# debug print
-#	# ------------------------------------
-#	i = 0
-#
-#	for k in progs.fielddefs:
-#		var type = progs.fielddefs[k].type
-#		var s_name = progs.fielddefs[k].s_name
-#		var line = ""
-#
-#		line = "%s -- %s -- %s" % [ str(k), _get_type_sting(type), s_name  ]
-#
-#		console.con_print(line)
-#		i += 1
-#
-##		if i > 100:
-##			break
-	
-	console.con_print("%d fielddefs loaded." % num)
-	console.con_print("")
+	console.con_print_debug(console.DEBUG_LOW, "%d fielddefs loaded." % num)
+	console.con_print_debug(console.DEBUG_LOW, "")
 
 
 
@@ -459,36 +427,43 @@ func _get_functions(struct):
 	# ------------------------------------
 	progs.functions = functions
 	
-	console.con_print("----------------------------------")
-	console.con_print("functions")
-	console.con_print("----------------------------------")
-	
-#	# ------------------------------------
-#	# debug print
-#	# ------------------------------------
-#	i = 0
-#
-#	for k in progs.functions:
-#
-#		var line = "%d:\t(%d) %s -- statement: %d -- param: %d -- locals: %d -- profile: %d -- source: %s" % [
-#			k,
-#			progs.functions[k].numparms,
-#			progs.functions[k].s_name,
-#			progs.functions[k].first_statement,
-#			progs.functions[k].parm_start,
-#			progs.functions[k].locals,
-#			progs.functions[k].profile,
-#			progs.functions[k].s_file,
-#			]
-#
-#		console.con_print(line)
-#		i += 1
-#
-##		if i > 100:
-##			break
-	
-	console.con_print("%d functions loaded." % num)
-	console.con_print("")
+	# ------------------------------------
+	# debug print DEBUG_LOW
+	# ------------------------------------
+	if console.debug_level >= console.DEBUG_LOW:
+		console.con_print_debug(console.DEBUG_LOW, "----------------------------------")
+		console.con_print_debug(console.DEBUG_LOW, "functions")
+		console.con_print_debug(console.DEBUG_LOW, "----------------------------------")
+		
+		# ------------------------------------
+		# debug print DEBUG_HIGH
+		# ------------------------------------
+		if console.debug_level >= console.DEBUG_HIGH:
+			
+			i = 0
+			
+			for k in progs.functions:
+				
+				var line = "%d:\t(%d) %s -- statement: %d -- param: %d -- locals: %d -- profile: %d -- source: %s" % [
+					k,
+					progs.functions[k].numparms,
+					progs.functions[k].s_name,
+					progs.functions[k].first_statement,
+					progs.functions[k].parm_start,
+					progs.functions[k].locals,
+					progs.functions[k].profile,
+					progs.functions[k].s_file,
+					]
+				
+				console.con_print_debug(console.DEBUG_HIGH, line)
+				i += 1
+				
+#				if i > 100:
+#					break
+		
+		console.con_print_debug(console.DEBUG_LOW, "%d functions loaded." % num)
+		console.con_print_debug(console.DEBUG_LOW, "")
+
 
 
 # -----------------------------------------------------
@@ -523,11 +498,15 @@ func _get_statements(struct):
 	# ------------------------------------
 	progs.statements = statements
 	
-	console.con_print("----------------------------------")
-	console.con_print("statements")
-	console.con_print("----------------------------------")
-	console.con_print("%d statements loaded." % num)
-	console.con_print("")
+	# ------------------------------------
+	# debug print DEBUG_LOW
+	# ------------------------------------
+	if console.debug_level >= console.DEBUG_LOW:
+		console.con_print_debug(console.DEBUG_LOW, "----------------------------------")
+		console.con_print_debug(console.DEBUG_LOW, "statements")
+		console.con_print_debug(console.DEBUG_LOW, "----------------------------------")
+		console.con_print_debug(console.DEBUG_LOW, "%d statements loaded." % num)
+		console.con_print_debug(console.DEBUG_LOW, "")
 
 #	__   ___ __ ___  
 #	\ \ / / '_ ` _ \ 
@@ -766,7 +745,6 @@ const OFS_SELF = 28
 const OFS_OTHER = 29
 const OFS_WORLD = 30
 
-
 const MAX_STACK_DEPTH = 32
 const LOCALSTACK_SIZE = 2048
 
@@ -788,7 +766,9 @@ var pr_string_num : int = -1
 # -----------------------------------------------------
 func _PR_EnterFunction(funcnum : int):
 	
-	console.con_print("[PROGS] _PR_EnterFunction: %s" % progs.functions[funcnum].s_name)
+	console.con_print_debug(console.DEBUG_MEDIUM,
+			"_PR_EnterFunction: %s",
+			[ progs.functions[funcnum].s_name] )
 	
 	pr_stack.push_back( { "s": pr_xstatement, "f": pr_xfunction} )
 	pr_depth += 1
@@ -839,7 +819,9 @@ func _PR_EnterFunction(funcnum : int):
 # -----------------------------------------------------
 func _PR_LeaveFunction():
 	
-	console.con_print("[PROGS] _PR_LeaveFunction: %s" % progs.functions[pr_xfunction].s_name)
+	console.con_print_debug(console.DEBUG_MEDIUM,
+			"_PR_LeaveFunction: %s",
+			[ progs.functions[pr_xfunction].s_name ] )
 	
 	if pr_depth < 0:
 		console.con_print_error("prog stack underflow")
@@ -865,8 +847,6 @@ func _PR_LeaveFunction():
 	pr_xfunction = stack.f
 	
 	return stack.s
-	
-
 
 
 
@@ -904,7 +884,8 @@ func exec(p_function):
 		var b = st.b
 		var c = st.c
 		
-		#console.con_print("[color=lime]%d:   %s %d %d %d[/color]" % [s, _get_opcode_name( st.op ), a, b, c])
+		if console.debug_level >= console.DEBUG_HIGH:
+			console.con_print_debug(console.DEBUG_HIGH, "%d:   %s %d %d %d", [s, _get_opcode_name( st.op ), a, b, c])
 		
 		match st.op:
 			
@@ -999,7 +980,11 @@ func exec(p_function):
 					pr_depth = 0
 					localstack.clear()
 					localstack_used = 0
-					console.con_print("[PROGS] exec: %d done." % func_num)
+					
+					console.con_print_debug(console.DEBUG_MEDIUM,
+							"function: %d done.",
+							[ func_num ] ) 
+					
 					break
 				
 			_:
@@ -1277,10 +1262,8 @@ func _OP_EQ_S(st):
 	
 	if str_a == str_b:
 		progs.globals.put_float(1)
-		console.con_print("[PROGS] _OP_EQ_S: [%s == %s]" % [str_a, str_b])
 	else:
-		progs.globals.put_float(0)	
-		console.con_print("[PROGS] _OP_EQ_S: [%s != %s]" % [str_a, str_b])
+		progs.globals.put_float(0)
 
 
 
@@ -1487,7 +1470,7 @@ func _OP_CALL(st, s):
 		_call_builtin(st, -progs.functions[a].first_statement)
 		return s
 	
-	console.con_print("[PROGS] _OP_CALL: args %d -- funcnum: %d" % [pr_argc, a])
+	#console.con_print("[PROGS] _OP_CALL: args %d -- funcnum: %d" % [pr_argc, a])
 	
 	return _PR_EnterFunction(a)
 
@@ -1551,7 +1534,7 @@ func _builtin_1_makevectors(st):
 	set_global_by_name("v_right", right)
 	set_global_by_name("v_up", up)
 	
-	console.con_print("[PROGS] _builtin_1_makevectors: " )
+	console.con_print_debug(console.DEBUG_MEDIUM, "_builtin_1_makevectors: " )
 
 
 
@@ -1574,7 +1557,7 @@ func _builtin_2_setorigin(st):
 	var entvars = ent.get_meta("entvars")
 	entvars["origin"] = vec
 	
-	console.con_print("[PROGS] _builtin_2_setorigin: " )
+	console.con_print_debug(console.DEBUG_MEDIUM, "_builtin_2_setorigin: " )
 
 
 
@@ -1607,7 +1590,7 @@ func _builtin_3_setmodel(st):
 	entvars["model"] = path
 	entvars["modelindex"] = 1234
 	
-	console.con_print("[PROGS] _builtin_3_setmodel: " )
+	console.con_print_debug(console.DEBUG_MEDIUM, "_builtin_3_setmodel: " )
 
 
 
@@ -1650,6 +1633,8 @@ func _builtin_4_setsize(st):
 	var entvars = ent.get_meta("entvars")
 	entvars["mins"] = mins
 	entvars["maxs"] = maxs
+	
+	console.con_print_debug(console.DEBUG_MEDIUM, "_builtin_4_setsize: " )
 
 
 
@@ -1664,7 +1649,7 @@ func _builtin_7_random(st):
 	var random = randf()
 	progs.globals.seek(OFS_RETURN * 4)
 	progs.globals.put_float(random)
-	console.con_print("[PROGS] _builtin_7_random: %f" %  random)
+	console.con_print_debug(console.DEBUG_MEDIUM, "_builtin_7_random: %f" %  random)
 
 
 
@@ -1672,7 +1657,7 @@ func _builtin_14_spawn(st):
 	var ent = entities.spawn()
 	progs.globals.seek(OFS_RETURN * 4)
 	progs.globals.put_32(ent.get_instance_id())
-	console.con_print("[PROGS] _builtin_14_spawn: %d" %  ent.get_instance_id())
+	console.con_print_debug(console.DEBUG_MEDIUM, "_builtin_14_spawn: %d" %  ent.get_instance_id())
 
 
 
@@ -1687,10 +1672,10 @@ func _builtin_19_precache_sound(st):
 	else:
 		str_a = progs.strings[a]
 	
-	console.con_print("[PROGS] _builtin_19_precache_sound: %s" % [str_a] )
-	
 	progs.globals.seek(OFS_PARM0 * 4)
 	progs.globals.put_u32(a)
+	
+	console.con_print_debug(console.DEBUG_MEDIUM, "_builtin_19_precache_sound: %s" % [str_a] )
 
 
 
@@ -1705,10 +1690,10 @@ func _builtin_20_precache_model(st):
 	else:
 		str_a = progs.strings[a]
 	
-	console.con_print("[PROGS] _builtin_20_precache_model: %s" % [str_a] )
-	
 	progs.globals.seek(OFS_PARM0 * 4)
 	progs.globals.put_u32(a)
+	
+	console.con_print_debug(console.DEBUG_MEDIUM, "_builtin_20_precache_model: %s" % [str_a] )
 
 
 
@@ -1735,6 +1720,8 @@ func _builtin_34_droptofloor(st):
 	
 	progs.globals.seek(OFS_RETURN * 4)
 	progs.globals.put_float(1)
+	
+	console.con_print_debug(console.DEBUG_MEDIUM, "_builtin_34_droptofloor: ")
 
 
 
@@ -1752,7 +1739,7 @@ func _builtin_35_lightstyle(st):
 	else:
 		str_b = progs.strings[b]
 	
-	console.con_print("[PROGS] _builtin_35_lightstyle: %s, %s" % [a, str_b] )
+	console.con_print_debug(console.DEBUG_MEDIUM, "_builtin_35_lightstyle: %s, %s" % [a, str_b] )
 
 
 
@@ -1770,7 +1757,7 @@ func _builtin_43_fabs(st):
 	progs.globals.seek(OFS_RETURN * 4)
 	progs.globals.put_float(abs(f))
 	
-	console.con_print("[PROGS] _builtin_43_fabs: " )
+	console.con_print_debug(console.DEBUG_MEDIUM, "_builtin_43_fabs: %f" % f )
 
 
 
@@ -1795,7 +1782,8 @@ func _builtin_72_cvar_set(st):
 		str_b = progs.strings[b]
 	
 	console.cvars[str_a].value = str_b
-	console.con_print("[PROGS] _builtin_72_cvar_set: %s, %s" % [str_a, str_b] )
+	
+	console.con_print_debug(console.DEBUG_MEDIUM,"_builtin_72_cvar_set: %s, %s" % [str_a, str_b] )
 
 
 
@@ -1842,7 +1830,7 @@ func _builtin_74_ambientsound(st):
 	progs.globals.seek(OFS_PARM3 * 4)
 	var attenuation = progs.globals.get_float()
 	
-	console.con_print("[PROGS] _builtin_74_ambientsound: [%f %f %f], %s, %f, %f" % [pos.x, pos.y, pos.z, sample, volume, attenuation] )
+	console.con_print_debug(console.DEBUG_MEDIUM, "_builtin_74_ambientsound: [%f %f %f], %s, %f, %f" % [pos.x, pos.y, pos.z, sample, volume, attenuation] )
 
 
 

@@ -769,7 +769,6 @@ func _confunc_map(args):
 	
 	map = Dictionary()
 	map_loaded = false
-	raw = Raw.new()
 	
 	bsp_meshes = Array()
 	bsp_textures = Dictionary()
