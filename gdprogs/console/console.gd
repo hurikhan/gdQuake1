@@ -38,6 +38,7 @@ var ansi_support = false
 var state = CONSOLE_STATE_CLOSED
 var busy = false
 
+var thread_mt_num = 1
 var thread_count = 0
 var thread_count_mutex = Mutex.new()
 
@@ -375,7 +376,7 @@ func _get_source():
 func con_thread(text, _node, _func, _args):
 	
 	while(true):
-		if thread_count >= cvars["mt_num"].value:
+		if thread_count >= thread_mt_num:
 			OS.delay_msec(10)
 		else:
 			thread_count_mutex.lock()
@@ -1356,10 +1357,10 @@ func _register_cvars():
 	
 	register_cvar("mt_num", {
 		node = self,
-		description = "Maximum number of parallel threads",
+		description = "Maximum number of parallel threads. -1: AUTO",
 		type = "int",
-		default_value = 4,
-		min_value = 0,
+		default_value = -1,
+		min_value = -1,
 		max_value = 128
 	})
 	
@@ -1493,7 +1494,10 @@ func _convar_mt(value):
 
 # MultiThreading max num of threads
 func _convar_mt_num(value):
-	pass
+	if value == -1:
+		thread_mt_num = OS.get_processor_count() - 1
+	else:
+		thread_mt_num = value
 
 
 func _convar_mt_debug(value):
