@@ -1489,7 +1489,10 @@ func _convar_cache(value):
 
 # MultiThreading On/Off
 func _convar_mt(value):
-	pass
+	if value == 1:
+		if not OS.can_use_threads():
+			cvars["mt"] = 0
+			con_print_warn("No multithread support on this platform avaiable. cvar \"mt\" ist resetted to \"0\".")
 
 
 # MultiThreading max num of threads
