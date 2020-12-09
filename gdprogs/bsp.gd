@@ -317,7 +317,7 @@ func load_map(filename):
 	
 	var timer_model_parsing = console.con_timer_create()
 	
-	if console.cvars["mt"].value == 0:
+	if console.cvars["mt"].value == 0 or true:
 		# -----------------------------------------------------
 		# single thread bsp model loading 
 		# -----------------------------------------------------
@@ -724,22 +724,47 @@ func _load_entities():
 			var entity = entities.spawn()
 			var evar = entity.get_meta("entvars")
 			
+			
 			if e.classname == "worldspawn":
 				evar.model = map.filename
-				
-#			if e.classname == "worldspawn" or e.classname.begins_with("func_"):
 			
-				for key in e:
-					if key in evar:
-						evar[key] = e[key]
-						
+			match e.classname:
 				
-				progs.set_global_by_name("self", entity.get_instance_id())
-				progs.set_global_by_name("world", entity.get_instance_id())
-				
-				var timer_exec = console.con_timer_create()
-				progs.exec(e.classname)
-				timer_exec.print("Executed %s in " % e.classname)
+				"worldspawn", "func_door":
+					
+					print(e)
+					
+					for key in e:
+						if key in evar:
+							print(key)
+							evar[key] = e[key]
+#						else:
+#							match key:
+#								"angle":
+#
+#									var angles := Vector3()
+#
+#									match int(e["angle"]):
+#										-1:
+#											angles.y = -1.0
+#										-2:
+#											angles.y = -2.0
+#										_:
+#											angles.x = int(e["angle"])
+#
+#									evar["angles"] = angles
+#									print(angles)
+									
+									
+									
+							
+					
+					progs.set_global_by_name("self", entity.get_instance_id())
+					progs.set_global_by_name("world", entity.get_instance_id())
+					
+					var timer_exec = console.con_timer_create()
+					progs.exec(e.classname)
+					timer_exec.print("Executed %s in " % e.classname)
 
 	
 #	print(entity.get_meta("entvars").classname)

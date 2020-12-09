@@ -7,7 +7,7 @@ var entities = Dictionary()
 # -----------------------------------------------------
 # spawn
 # -----------------------------------------------------
-func spawn():
+func spawn() -> Spatial:
 	var node = $"/root/world/map/origin/entities"
 	
 	var entity = Spatial.new()

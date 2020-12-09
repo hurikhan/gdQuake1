@@ -357,7 +357,6 @@ func con_print_debug(level : int, format_string : String, format_vars : Array = 
 func _get_source():
 	
 	if OS.is_debug_build():
-		print("call_stack")
 		var call_stack = get_stack()[2]
 		var source = call_stack.source.get_file()
 		

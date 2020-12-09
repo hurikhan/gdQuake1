@@ -761,6 +761,11 @@ var pr_pointer : Dictionary
 var pr_strings : Dictionary
 var pr_string_num : int = -1
 
+# Game Data
+var cached_sounds : Dictionary
+var cached_models : Dictionary
+var lightstyles : Dictionary
+
 # -----------------------------------------------------
 # _PR_EnterFunction
 # -----------------------------------------------------
@@ -1495,11 +1500,27 @@ func _call_builtin(st, bfunc):
 
 
 
-func _builtin_1_makevectors(st):
-	progs.globals.seek(OFS_PARM0 * 4)
-	var pitch = progs.globals.get_float()		# up / down
-	var yaw = progs.globals.get_float()			# left / right
-	var roll = progs.globals.get_float()		# fall over
+# -----------------------------------------------------------------------------
+# void makevectors(vector angles)
+# -----------------------------------------------------------------------------
+# Creates relative forward, right and up vectors with length 1 from angles.
+# These 3 directional vectors are stored in the global variables 
+# v_forward, v_right and v_up respectively. Note that because these are 
+# global variables, running makevectors on another set of angles will destroy
+# the previously calculated vectors. 
+#
+# Parameters:
+#
+#     angles - The angles that will be used to generate the vectors
+#
+# -----------------------------------------------------------------------------
+##inline##
+func _builtin_1_makevectors(st) -> void:
+	
+	var vec = _get_global_vector(OFS_PARM0)
+	var pitch = vec.x		# up / down
+	var yaw = vec.y			# left / right
+	var roll = vec.z		# fall over
 	
 	var pi_2_div_360 : float = PI * 2 / 360.0
 	
@@ -1515,17 +1536,17 @@ func _builtin_1_makevectors(st):
 	var sr = sin(angle)
 	var cr = cos(angle)
 	
-	var forward : Vector3 = Vector3()
+	var forward := Vector3()
 	forward.x = cp * cy;
 	forward.y = cp * sy;
 	forward.z = -sp;
 	
-	var right : Vector3 = Vector3()
+	var right := Vector3()
 	right.x = -1 * sr * sp * cy + -1 * cr * sy
 	right.y = -1 * sr * sp * sy + -1 * cr * cy
 	right.z = -1 * sr * cp
 	
-	var up : Vector3 = Vector3()
+	var up := Vector3()
 	up.x = cr * sp * cy + -sr * -sy
 	up.y = cr * sp * sy + -sr * cy
 	up.z = cr * cp
@@ -1534,30 +1555,43 @@ func _builtin_1_makevectors(st):
 	set_global_by_name("v_right", right)
 	set_global_by_name("v_up", up)
 	
-	console.con_print_debug(console.DEBUG_MEDIUM, "_builtin_1_makevectors: " )
+	##debug##
+	if console.debug_level >= console.DEBUG_MEDIUM:
+		console.con_print_debug(console.DEBUG_MEDIUM, "_builtin_1_makevectors: ")
+		console.con_print_debug(console.DEBUG_MEDIUM, "    v_forward: [%f %f %f] " % [forward.x, forward.y, forward.z])
+		console.con_print_debug(console.DEBUG_MEDIUM, "    v_right:   [%f %f %f] " % [right.x, right.y, right.z])
+		console.con_print_debug(console.DEBUG_MEDIUM, "    v_up:      [%f %f %f] " % [up.x, up.y, up.z])
 
 
-
-func _builtin_2_setorigin(st):
-	progs.globals.seek(OFS_PARM0 * 4)
-	var parm0 = progs.globals.get_u32()
+# -----------------------------------------------------------------------------
+# void setorigin (entity e, vector position)
+# -----------------------------------------------------------------------------
+# Moves an entity to a given location. That function is to be used when spawning
+# an entity or when teleporting it. This is the only valid way to move an object
+# without using the physics of the world (setting velocity and waiting).
+# DO NOT change directly e.origin, otherwise internal links would be screwed,
+# and entity clipping would be messed up. 
+#
+# Parameters:
+#
+# e = entity to be moved
+#
+# position = new position for the entity
+# -----------------------------------------------------------------------------
+##inline##
+func _builtin_2_setorigin(st) -> void:
 	
-	progs.globals.seek(OFS_PARM1 * 4)
-	var parm1 = progs.globals.get_u32()
-	
-	var ent = entities.entities[parm0]
-	
-	progs.globals.seek(parm1 * 4)
-	var vec : Vector3 = Vector3()
-	vec.x = progs.globals.get_float()
-	vec.y = progs.globals.get_float()
-	vec.z = progs.globals.get_float()
+	var ent = _get_global_ent(OFS_PARM0)
+	var vec = _get_global_vector(OFS_PARM1)
 	
 	ent.translation = vec
 	var entvars = ent.get_meta("entvars")
 	entvars["origin"] = vec
 	
-	console.con_print_debug(console.DEBUG_MEDIUM, "_builtin_2_setorigin: " )
+	##debug##
+	if console.debug_level >= console.DEBUG_MEDIUM:
+		console.con_print_debug(console.DEBUG_MEDIUM, "_builtin_2_setorigin: " )
+		console.con_print_debug(console.DEBUG_MEDIUM, "    origin: [%f %f %f] " % [vec.x, vec.y, vec.z])
 
 
 
@@ -1570,27 +1604,22 @@ func _builtin_2_setorigin(st):
 #    path - The path to the model file to set.
 #           Can be a model (.mdl), sprite (.spr) or map (.bsp)
 # -----------------------------------------------------------------------------
-func _builtin_3_setmodel(st):
-	progs.globals.seek(OFS_PARM0 * 4)
-	var parm0 = progs.globals.get_32()
+func _builtin_3_setmodel(st) -> void:
 	
-	progs.globals.seek(OFS_PARM1 * 4)
-	var parm1 = progs.globals.get_32()
+	var ent = _get_global_ent(OFS_PARM0)
+	var path = _get_global_string(OFS_PARM1)
 	
-	var ent = entities.entities[parm0]
-	var path = ""
-	
-	
-	if parm1 < 0:
-		path = pr_strings[parm1]
-	else:
-		path = progs.strings[parm1]
 	
 	var entvars = ent.get_meta("entvars")
-	entvars["model"] = path
-	entvars["modelindex"] = 1234
+#	entvars["model"] = path
+#	entvars["modelindex"] = 1234
 	
-	console.con_print_debug(console.DEBUG_MEDIUM, "_builtin_3_setmodel: " )
+	add_child(bsp.bsp_meshes[int(entvars.model)])
+	
+	if console.debug_level >= console.DEBUG_MEDIUM:
+		console.con_print_debug(console.DEBUG_MEDIUM, "_builtin_3_setmodel: " )
+		console.con_print_debug(console.DEBUG_MEDIUM, "    ent:  [%s] " % entvars.classname)
+		console.con_print_debug(console.DEBUG_MEDIUM, "    path: [%s] " % path)
 
 
 
@@ -1653,47 +1682,48 @@ func _builtin_7_random(st):
 
 
 
-func _builtin_14_spawn(st):
+##inline##
+func _builtin_14_spawn(st) -> void:
+	
 	var ent = entities.spawn()
-	progs.globals.seek(OFS_RETURN * 4)
-	progs.globals.put_32(ent.get_instance_id())
+	
+	_set_global_int(OFS_RETURN, ent.get_instance_id())
+	
+	##debug##
 	console.con_print_debug(console.DEBUG_MEDIUM, "_builtin_14_spawn: %d" %  ent.get_instance_id())
 
 
 
-func _builtin_19_precache_sound(st):
-	progs.globals.seek(OFS_PARM0 * 4)
-	var a = progs.globals.get_32()
+##inline##
+func _builtin_19_precache_sound(st) -> void:
 	
-	var str_a : String = ""
+	var parm0 := _get_global_int(OFS_PARM0)
+	var filename := _get_global_string(OFS_PARM0)
 	
-	if a < 0:
-		str_a = pr_strings[a]
-	else:
-		str_a = progs.strings[a]
+	if not cached_sounds.has(filename):
+		cached_sounds[filename] = load(console.cvars["path_prefix"].value + "id1-x/" + "sound/" + filename )
 	
-	progs.globals.seek(OFS_PARM0 * 4)
-	progs.globals.put_u32(a)
+	_set_global_int(OFS_RETURN, parm0)
 	
-	console.con_print_debug(console.DEBUG_MEDIUM, "_builtin_19_precache_sound: %s" % [str_a] )
+	##debug##
+	console.con_print_debug(console.DEBUG_MEDIUM, "_builtin_19_precache_sound: %s" % [filename] )
 
 
 
-func _builtin_20_precache_model(st):
-	progs.globals.seek(OFS_PARM0 * 4)
-	var a = progs.globals.get_32()
+##inline##
+func _builtin_20_precache_model(st) -> void:
 	
-	var str_a : String = ""
+	var parm0 := _get_global_int(OFS_PARM0)
+	var filename := _get_global_string(OFS_PARM0)
 	
-	if a < 0:
-		str_a = pr_strings[a]
-	else:
-		str_a = progs.strings[a]
+	##FIXME##
+	if not cached_models.has(filename):
+		cached_models[filename] = ""
 	
-	progs.globals.seek(OFS_PARM0 * 4)
-	progs.globals.put_u32(a)
+	_set_global_int(OFS_RETURN, parm0)
 	
-	console.con_print_debug(console.DEBUG_MEDIUM, "_builtin_20_precache_model: %s" % [str_a] )
+	##debug##
+	console.con_print_debug(console.DEBUG_MEDIUM, "_builtin_20_precache_model: %s" % [filename] )
 
 
 
@@ -1725,21 +1755,16 @@ func _builtin_34_droptofloor(st):
 
 
 
-func _builtin_35_lightstyle(st):
-	progs.globals.seek(OFS_PARM0 * 4)
-	var a = progs.globals.get_float()
+##inline##
+func _builtin_35_lightstyle(st) -> void:
 	
-	progs.globals.seek(OFS_PARM1 * 4)
-	var b = progs.globals.get_32()
+	var parm0 := _get_global_float(OFS_PARM0)
+	var lightstyle := _get_global_string(OFS_PARM1)
 	
-	var str_b : String = ""
+	lightstyles[int(parm0)] = lightstyle
 	
-	if b < 0:
-		str_b = pr_strings[b]
-	else:
-		str_b = progs.strings[b]
-	
-	console.con_print_debug(console.DEBUG_MEDIUM, "_builtin_35_lightstyle: %s, %s" % [a, str_b] )
+	##debug##
+	console.con_print_debug(console.DEBUG_MEDIUM, "_builtin_35_lightstyle: %s, %s" % [parm0, lightstyle] )
 
 
 
@@ -1761,29 +1786,16 @@ func _builtin_43_fabs(st):
 
 
 
+##inline##
 func _builtin_72_cvar_set(st):
-	progs.globals.seek(OFS_PARM0 * 4)
-	var a = progs.globals.get_32()
 	
-	progs.globals.seek(OFS_PARM1 * 4)
-	var b = progs.globals.get_32()
+	var cvar_name = _get_global_string(OFS_PARM0)
+	var value = _get_global_string(OFS_PARM1)
 	
-	var str_a : String = ""
-	var str_b : String = ""
+	console.cvars[cvar_name].value = value
 	
-	if a < 0:
-		str_a = pr_strings[a]
-	else:
-		str_a = progs.strings[a]
-	
-	if b < 0:
-		str_b = pr_strings[b]
-	else:
-		str_b = progs.strings[b]
-	
-	console.cvars[str_a].value = str_b
-	
-	console.con_print_debug(console.DEBUG_MEDIUM,"_builtin_72_cvar_set: %s, %s" % [str_a, str_b] )
+	##debug##
+	console.con_print_debug(console.DEBUG_MEDIUM,"_builtin_72_cvar_set: %s, %s" % [cvar_name, value] )
 
 
 
@@ -1831,6 +1843,110 @@ func _builtin_74_ambientsound(st):
 	var attenuation = progs.globals.get_float()
 	
 	console.con_print_debug(console.DEBUG_MEDIUM, "_builtin_74_ambientsound: [%f %f %f], %s, %f, %f" % [pos.x, pos.y, pos.z, sample, volume, attenuation] )
+
+
+
+##inline##
+func _get_global_string(num : int) -> String:
+	
+	var ret : String = ""
+	
+	progs.globals.seek(num * 4)
+	var str_num = progs.globals.get_32()
+	
+	if str_num < 0:
+		ret = pr_strings[str_num]
+	else:
+		ret = progs.strings[str_num]
+	
+	return ret
+
+
+
+##inline##
+func _get_global_int(num : int) -> int:
+	
+	var ret : int
+	
+	progs.globals.seek(num * 4)
+	ret = progs.globals.get_32()
+	
+	return ret
+
+
+
+##inline##
+func _set_global_int(num : int, value : int) -> void:
+	
+	progs.globals.seek(num * 4)
+	progs.globals.put_32(value)
+
+
+
+##inline##
+func _get_global_float(num : int) -> float:
+	
+	var ret : float
+	
+	progs.globals.seek(num * 4)
+	ret = progs.globals.get_float()
+	
+	return ret
+
+
+
+##inline##
+func _set_global_float(num : int, value : float) -> void:
+	
+	progs.globals.seek(num * 4)
+	progs.globals.put_float(value)
+
+
+
+##inline##
+func _get_global_vector(num : int) -> Vector3:
+	
+	var ret : Vector3
+	
+	progs.globals.seek(num * 4)
+	ret.x = progs.globals.get_float()
+	ret.y = progs.globals.get_float()
+	ret.z = progs.globals.get_float()
+	
+	return ret
+
+
+
+##inline##
+func _set_global_vector(num : int, value : Vector3) -> void:
+	
+	progs.globals.seek(num * 4)
+	progs.globals.put_float(value.x)
+	progs.globals.put_float(value.y)
+	progs.globals.put_float(value.z)
+
+
+
+##inline##
+func _get_global_ent(num : int):
+	
+	var ret
+	
+	progs.globals.seek(num * 4)
+	var ent_num = progs.globals.get_u32()
+	
+	ret = entities.entities[ent_num]
+	
+	return ret
+
+
+
+##inline##
+func _set_global_ent(num : int, value) -> void:
+	
+	progs.globals.seek(num * 4)
+	progs.globals.put_u32(value.get_instance_id())
+
 
 
 
