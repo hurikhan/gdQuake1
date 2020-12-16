@@ -360,6 +360,10 @@ func _get_source():
 		var call_stack = get_stack()[2]
 		var source = call_stack.source.get_file()
 		
+		if source == "console.gd":
+			call_stack = get_stack()[3]
+			source = call_stack.source.get_file()
+		
 		var ret = source.split(".")[0].to_upper() 
 		
 		if _debug_location == 1:
@@ -425,27 +429,32 @@ func _con_thread_func(userdata):
 	return ret
 
 
-func con_timer_create():
+func con_timer_create(debug_level := DEBUG_NONE) -> _timer:
 	var timer = _timer.new()
-	timer.init(self)
+	timer.init(self, debug_level)
 	return timer
 
 
 class _timer:
 	
-	var time_start : int = 0
-	var time_end : int = 0
-	var this : Object
+	var time_start :int = 0
+	var time_end :int = 0
+	var _this : Object
+	var _debug_level :int = 0
 	
 	func _init():
 		time_start = OS.get_ticks_msec()
 	
-	func init(obj):
-		this = obj
+	func init(obj, debug_level):
+		_this = obj
+		_debug_level = debug_level
 	
 	func print(text):
 		time_end = OS.get_ticks_msec()
-		this.con_print(text + "[%d ms]" % [time_end - time_start])
+		if _debug_level == console.DEBUG_NONE:
+			_this.con_print(text + " [%d ms]" % [time_end - time_start])
+		else:
+			_this.con_print_debug(_debug_level, text + " [%d ms]" % [time_end - time_start])
 
 
 func con_print_array(arr):
@@ -957,7 +966,13 @@ func _register_commands():
 		args = "",
 		num_args = 0
 	})
-
+	
+	register_command("console_sandbox", {
+		node = self,
+		description = "Testing gdscript sandbox.",
+		args = "",
+		num_args = 0
+	})
 
 #  ___ ___  _ __ ___  _ __ ___   __ _ _ __   __| |
 # / __/ _ \| '_ ` _ \| '_ ` _ \ / _` | '_ \ / _` |
@@ -1239,6 +1254,57 @@ func _confunc_cache_clear():
 	if dir.dir_exists(path):
 		_remove_dir(path)
 		dir.remove(path)
+
+
+func _confunc_console_sandbox():
+	
+	
+	var array = Array()
+	array.resize(100000)
+	
+	for i in range(100000):
+		if array[i] == null:
+			array[i] = 55
+	
+	
+	#con_print("%s: %d " % [typeof(array[0]), array[0]])
+	
+	var timer = con_timer_create()
+	
+	for j in range(10):
+		for i in range(100000):
+			if array[i] != null:
+				match typeof(array[i]):
+
+					TYPE_INT:
+						array[i] = 0.5
+					TYPE_OBJECT:
+						pass
+					TYPE_REAL:
+						pass
+	
+	timer.print("Sandbox code in ")
+	
+	var timer2 = con_timer_create()
+	
+	for j in range(10):
+		for i in range(100000):
+			if array[i] != null:
+				#var t = typeof(array[i])
+				
+				if TYPE_INT == typeof(array[i]):
+					array[i] = 0.5
+				elif TYPE_OBJECT == typeof(array[i]):
+					pass
+				elif TYPE_REAL == typeof(array[i]):
+					pass
+	
+	timer2.print("Sandbox code in ")
+	
+	#con_print("%s: %d " % [typeof(array[0]), array[0]])
+	
+
+	
 
 
 # [Helper] Removes a complete directory recursivly

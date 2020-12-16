@@ -92,21 +92,21 @@ func load_progs(filename):
 		_get_dprograms(dprograms_t)
 		_get_strings()
 		_get_globaldefs(def_t)
+		_get_globals()
 		_get_fielddefs(def_t)
 		_get_functions(function_t)
 		_get_statements(statement_t)
 		
 		parser_v3.close_file()
 		
-		
 		if console.cvars["cache"].value == 1:
 			dir.make_dir_recursive( path.get_base_dir() )
-			
+
 			var cache_file = File.new()
 			var err = cache_file.open(path, File.WRITE)
 			cache_file.store_var(progs, true)
 			cache_file.close()
-	
+
 	_generate_entvars_script()
 	
 	console.con_print_ok("%s loaded." % filename)
@@ -170,7 +170,7 @@ func _get_strings():
 			for k in sdict:
 				var line = "%s -- %s" % [k, sdict[k]]
 				console.con_print_debug(console.DEBUG_HIGH, line)
-			
+
 			var s_max = 0
 			for v in sdict.values():
 				var length = v.length()
@@ -187,17 +187,23 @@ func _get_strings():
 # _get_globaldefs
 # -----------------------------------------------------
 func _get_globaldefs(struct):
+	
+	##debug##
+	var timer := console.con_timer_create(console.DEBUG_LOW)
+	
 	var struct_size = struct.get_size()
 	var offset = progs.dprograms.ofs_globaldefs + struct_size
 	var num = progs.dprograms.num_globaldefs
 	
-	var globaldefs = Dictionary()
-	var globals_by_name = Dictionary()
-	var globals = StreamPeerBuffer.new()
+	# ------------------------------------
+	# globaldefs
+	# ------------------------------------
+	var globaldefs := Array()
 	
-	var i = 1
+	globaldefs.resize(num)
+	globaldefs[0] = {"type": EV_FLOAT, "offset":0, "s_name":"pad[28]"}
 	
-	while i < num - 1:
+	for i in range(1, num-1):
 		# ------------------------------------
 		# Get def entry
 		# ------------------------------------
@@ -219,48 +225,25 @@ func _get_globaldefs(struct):
 		# ------------------------------------
 		# Add dict entry
 		# ------------------------------------
-		var key = def.offset
-		
-		if def.type == EV_VECTOR:
-			key = str(key) + "_vec"
-		
-		if globaldefs.has(key):
-			key = str(key) + "_" + str(def.offset)
-			var type = def.type
-			var s_name = def.s_name
-			var _offset = def.offset
-			console.con_print_warn("[%d] [%s] Redefinition of: %s" % [ _offset, _get_type_sting(type), key, def.s_name ])
 			
-		globaldefs[key] = def
-		if not def.s_name.begins_with("IMM"):
-			globals_by_name[def.s_name] = key
+		globaldefs[i] = def
 		
 		# ------------------------------------
 		# Inc offset + counter i
 		# ------------------------------------
 		offset += struct_size
-		i += 1
+#		i += 1
 	
 	# ------------------------------------
 	# Add globaldefs to progs
 	# ------------------------------------
 	progs.globaldefs = globaldefs
-	progs.globals_by_name = globals_by_name
 	
-	# ------------------------------------
-	# Add globals to progs
-	# ------------------------------------
-	var arr = parser_v3.buffer.data_array
-	var start = progs.dprograms.ofs_globals
-	var end = progs.dprograms.ofs_globals + progs.dprograms.num_globals * 4 - 1
-	
-	globals.data_array = arr.subarray(start, end)
-	
-	progs.globals = globals
 	
 	# ------------------------------------
 	# debug print DEBUG_LOW
 	# ------------------------------------
+	##debug##
 	if console.debug_level >= console.DEBUG_LOW:
 		console.con_print_debug(console.DEBUG_LOW, "----------------------------------")
 		console.con_print_debug(console.DEBUG_LOW, "globaldefs")
@@ -270,23 +253,116 @@ func _get_globaldefs(struct):
 		# debug print DEBUG_HIGH
 		# ------------------------------------
 		if console.debug_level >= console.DEBUG_HIGH:
-			
-			i = 0
-			
-			for k in progs.globaldefs:
-				var type = progs.globaldefs[k].type
-				var s_name = progs.globaldefs[k].s_name
-				var line = ""
-				
-				line = "%s -- %s -- %s" % [ str(k), _get_type_sting(type), s_name  ]
-				
-				console.con_print_debug(console.DEBUG_HIGH, line)
-				i += 1
-				
-#				if i > 100:
-#					break
+
+			for index in range(1, progs.dprograms.num_globaldefs-1):
+				var name = progs.globaldefs[index].s_name
+				console.con_print_debug(console.DEBUG_HIGH, "%6d: %s" % [index, name])
 		
-		console.con_print_debug(console.DEBUG_LOW, "%d globaldefs loaded." % num)
+		timer.print("%d globaldefs loaded." % num)
+		
+		console.con_print_debug(console.DEBUG_LOW, "")
+
+
+
+# -----------------------------------------------------
+# _get_globals
+# -----------------------------------------------------
+func _get_globals():
+	
+	##debug##
+	var timer := console.con_timer_create(console.DEBUG_LOW)
+	
+	var globals := Array()
+	var globals_name := Array()	##debug
+	
+	globals.resize(progs.dprograms.num_globals)
+	globals_name.resize(progs.dprograms.num_globals)	##debug
+	
+	# ------------------------------------
+	# set names for Reserved Offsets
+	# ------------------------------------
+	globals_name[0] = "OFS_NULL"
+	globals_name[1] = "OFS_RETURN"
+	globals_name[4] = "OFS_PARM0"
+	globals_name[7] = "OFS_PARM1"
+	globals_name[10] = "OFS_PARM2"
+	globals_name[13] = "OFS_PARM3"
+	globals_name[16] = "OFS_PARM4"
+	globals_name[19] = "OFS_PARM5"
+	globals_name[22] = "OFS_PARM6"
+	globals_name[25] = "OFS_PARM7"
+		
+	# ------------------------------------
+	# globals
+	# ------------------------------------
+	var data = parser_v3.buffer.data_array
+	var start = progs.dprograms.ofs_globals
+	var end = progs.dprograms.ofs_globals + progs.dprograms.num_globals * 4 - 1
+	
+	var buffer := StreamPeerBuffer.new()
+	buffer.data_array = data.subarray(start, end)
+	
+	
+	for i in range(28):
+		globals[i] = 0
+	
+	for def in progs.globaldefs:
+		
+		if def == null:
+			continue
+		
+		
+		buffer.seek(def.offset * 4)
+		
+		match def.type:
+			EV_FLOAT:
+				globals[def.offset] = buffer.get_float()
+			EV_ENTITY:
+				globals[def.offset] = buffer.get_32()
+			EV_FIELD:
+				globals[def.offset] = buffer.get_32()
+			EV_FUNCTION:
+				globals[def.offset] = buffer.get_32()
+			EV_STRING:
+				globals[def.offset] = buffer.get_32()
+			EV_VECTOR:
+				globals[def.offset] = buffer.get_float()
+				globals[def.offset+1] = buffer.get_float()
+				globals[def.offset+2] = buffer.get_float()
+		
+		globals_name[def.offset] = def.s_name
+	
+	progs.globals = globals
+	progs.globals_name = globals_name
+	
+	
+	# ------------------------------------
+	# debug print DEBUG_HIGH
+	# ------------------------------------
+	if console.debug_level >= console.DEBUG_LOW:
+		
+		if console.debug_level >= console.DEBUG_HIGH:
+			
+			for def in progs.globaldefs:
+				
+				if def == null:
+					continue
+				
+				var value_str := ""
+				
+				match def.type:
+					EV_VECTOR:
+						value_str += "["
+						value_str += str(globals[def.offset]) + ", "
+						value_str += str(globals[def.offset+1]) + ", "
+						value_str += str(globals[def.offset+2])
+						value_str += "]"
+					_:
+						value_str = str(globals[def.offset])
+				
+				console.con_print_debug(console.DEBUG_HIGH, "offset: %6d type: %12s s_name: %-24s -- value: %s" % [def.offset, _get_type_string(def.type), def.s_name, value_str])
+		
+		timer.print("%d globals loaded." % progs.dprograms.num_globals)
 		console.con_print_debug(console.DEBUG_LOW, "")
 
 
@@ -295,15 +371,19 @@ func _get_globaldefs(struct):
 # _get_fielddefs
 # -----------------------------------------------------
 func _get_fielddefs(struct):
+	
+	##debug##
+	var timer := console.con_timer_create(console.DEBUG_LOW)
+	
 	var struct_size = struct.get_size()
 	var offset = progs.dprograms.ofs_fielddefs + struct_size
 	var num = progs.dprograms.num_fielddefs
 	
-	var fielddefs = Dictionary()
+	var fielddefs = Array()
+	fielddefs.resize(num+1)
 	
-	var i = 1
 	
-	while i < num:
+	for i in range(1,num):
 		# ------------------------------------
 		# Get def entry
 		# ------------------------------------
@@ -323,27 +403,15 @@ func _get_fielddefs(struct):
 			def.type -= 0x8000
 		
 		# ------------------------------------
-		# Cleanup + add dict entry
+		# add dict entry
 		# ------------------------------------
-		var key = def.offset
 		
-		if def.type == EV_VECTOR:
-			key = str(key) + "_vec"
-		
-		if fielddefs.has(key):
-			key = str(key) + "_" + str(def.offset)
-			var type = def.type
-			var s_name = def.s_name
-			var _offset = def.offset
-			console.con_print_warn("[%d] [%s] Redefinition of: %s" % [ _offset, _get_type_sting(type), key, def.s_name ])
-			
-		fielddefs[key] = def
+		fielddefs[i] = def
 		
 		# ------------------------------------
 		# Inc offset + counter i
 		# ------------------------------------
 		offset += struct_size
-		i += 1
 	
 	# ------------------------------------
 	# Add fielddefs entry to progs
@@ -363,23 +431,18 @@ func _get_fielddefs(struct):
 		# ------------------------------------
 		if console.debug_level >= console.DEBUG_HIGH:
 			
-			i = 0
-			
-			for k in progs.fielddefs:
-				var type = progs.fielddefs[k].type
-				var s_name = progs.fielddefs[k].s_name
+			for i in range(1,num):
+				var type = progs.fielddefs[i].type
+				var s_name = progs.fielddefs[i].s_name
+				var _offset = progs.fielddefs[i].offset
 				var line = ""
 				
-				line = "%s -- %s -- %s" % [ str(k), _get_type_sting(type), s_name  ]
+				line = "%s -- %s -- %s -- %d" % [ str(i), _get_type_string(type), s_name, _offset  ]
 				
 				console.con_print_debug(console.DEBUG_HIGH, line)
-				i += 1
-				
-#				if i > 100:
-#					break
 	
-	console.con_print_debug(console.DEBUG_LOW, "%d fielddefs loaded." % num)
-	console.con_print_debug(console.DEBUG_LOW, "")
+		timer.print("%d fielddefs loaded." % num)
+		console.con_print_debug(console.DEBUG_LOW, "")
 
 
 
@@ -387,15 +450,18 @@ func _get_fielddefs(struct):
 # _get_functions
 # -----------------------------------------------------
 func _get_functions(struct):
+	
+	##debug##
+	var timer := console.con_timer_create(console.DEBUG_LOW)
+	
 	var struct_size = struct.get_size()
 	var offset = progs.dprograms.ofs_functions + struct_size
 	var num = progs.dprograms.num_functions
 	
-	var functions = Dictionary()
+	var functions = Array()
+	functions.resize(num)
 	
-	var i = 1
-	
-	while i < num - 1:
+	for i in range(1,num):
 		# ------------------------------------
 		# Get function entry
 		# ------------------------------------
@@ -420,7 +486,6 @@ func _get_functions(struct):
 		# Inc offset + counter i
 		# ------------------------------------
 		offset += struct_size
-		i += 1
 	
 	# ------------------------------------
 	# Add fielddefs entry to progs
@@ -440,28 +505,25 @@ func _get_functions(struct):
 		# ------------------------------------
 		if console.debug_level >= console.DEBUG_HIGH:
 			
-			i = 0
-			
-			for k in progs.functions:
+			for i in range(1,num):
 				
 				var line = "%d:\t(%d) %s -- statement: %d -- param: %d -- locals: %d -- profile: %d -- source: %s" % [
-					k,
-					progs.functions[k].numparms,
-					progs.functions[k].s_name,
-					progs.functions[k].first_statement,
-					progs.functions[k].parm_start,
-					progs.functions[k].locals,
-					progs.functions[k].profile,
-					progs.functions[k].s_file,
+					i,
+					progs.functions[i].numparms,
+					progs.functions[i].s_name,
+					progs.functions[i].first_statement,
+					progs.functions[i].parm_start,
+					progs.functions[i].locals,
+					progs.functions[i].profile,
+					progs.functions[i].s_file,
 					]
 				
 				console.con_print_debug(console.DEBUG_HIGH, line)
-				i += 1
 				
 #				if i > 100:
 #					break
 		
-		console.con_print_debug(console.DEBUG_LOW, "%d functions loaded." % num)
+		timer.print("%d functions loaded." % num)
 		console.con_print_debug(console.DEBUG_LOW, "")
 
 
@@ -470,15 +532,19 @@ func _get_functions(struct):
 # _get_statements
 # -----------------------------------------------------
 func _get_statements(struct):
+	
+	##debug##
+	var timer := console.con_timer_create(console.DEBUG_LOW)
+	
 	var offset = progs.dprograms.ofs_statements + 8
 	var num = progs.dprograms.num_statements
 	
-	var statements = Dictionary()
+	var statements = Array()
+	statements.resize(num)
 	
 	var struct_size = struct.get_size()
-	var i = 1
 	
-	while i < num - 1:
+	for i in range(1,num-1):
 		# ------------------------------------
 		# Get statement
 		# ------------------------------------
@@ -490,7 +556,6 @@ func _get_statements(struct):
 		# Inc offset + counter i
 		# ------------------------------------
 		offset += struct_size
-		i += 1
 		
 	
 	# ------------------------------------
@@ -507,6 +572,68 @@ func _get_statements(struct):
 		console.con_print_debug(console.DEBUG_LOW, "----------------------------------")
 		console.con_print_debug(console.DEBUG_LOW, "%d statements loaded." % num)
 		console.con_print_debug(console.DEBUG_LOW, "")
+		
+		timer.print("%d functions loaded." % num)
+		console.con_print_debug(console.DEBUG_LOW, "")
+
+
+
+# -----------------------------------------------------
+# _generate_entvars_script
+# -----------------------------------------------------
+func _generate_entvars_script():
+	var script = ""
+	script += "extends Object\n\n"
+	
+	var fields = ""
+	var last_vector = "__none__"
+	
+	for i in range(1, progs.fielddefs.size()-2):
+		var _name : String = progs.fielddefs[i].s_name
+		var _type : int = progs.fielddefs[i].type
+		
+		match _type:
+			EV_ENTITY:
+				fields += "var %s : Spatial = null\n" % _name
+			EV_FUNCTION:
+				fields += "var %s : int = 0\n" % _name
+			EV_STRING:
+				fields += "var %s : String = \"\"\n" % _name
+			EV_FLOAT:
+				if not _name.begins_with(last_vector):
+					fields += "var %s : float = 0.0\n" % _name
+			EV_VECTOR:
+				fields += "var %s := Vector3(0.0, 0.0, 0.0)\n" % _name
+				last_vector = _name
+	
+	script += fields + "\n"
+	
+	var offset = "var offset = {\n"
+	var offset_vec = "var offset_vec = {\n"
+	
+	for i in range(1, progs.fielddefs.size()-2):
+		var _name : String = progs.fielddefs[i].s_name
+		var _type : int = progs.fielddefs[i].type
+		var _offset : int = progs.fielddefs[i].offset
+		
+		match _type:
+			EV_VECTOR:
+				offset_vec += "\t%d: \"%s\",\n" % [_offset, _name]
+			_:
+				offset += "\t%d: \"%s\",\n" % [_offset, _name]
+		
+	offset += "}\n\n"
+	offset_vec += "}\n\n"
+	
+	script += offset
+	script += offset_vec
+		
+	var fields_file = File.new()
+	var err = fields_file.open(console.cvars["path_prefix"].value + "/cache/entvars.gd", File.WRITE)
+	fields_file.store_string(script)
+	fields_file.close()
+
+
 
 #	__   ___ __ ___  
 #	\ \ / / '_ ` _ \ 
@@ -591,15 +718,6 @@ enum opcode {
 	OP_BITOR
 }
 
-var _q1_2_godot_types = {
-	EV_ENTITY : "Spatial",
-	EV_FLOAT : "float",
-	EV_FUNCTION : "int",
-	EV_STRING : "String",
-	EV_VECTOR : "Vector3"
-}
-
-
 
 # -----------------------------------------------------
 # _get_opcode_name
@@ -611,43 +729,6 @@ func _get_opcode_name(op):
 
 
 # -----------------------------------------------------
-# _generate_entvars_script
-# -----------------------------------------------------
-func _generate_entvars_script():
-	var script = ""
-	script += "extends Object\n\n"
-	
-	var vector_component = []
-	var index_dict = "\nvar index = {\n"
-	
-	for key in progs.fielddefs:
-		var _name = progs.fielddefs[key].s_name
-		var _type = _q1_2_godot_types[progs.fielddefs[key].type]
-		
-		if _type != "Vector3":
-			index_dict += "\t%d: \"%s\",\n" % [key, _name]
-		
-		if _type == "float":
-			if vector_component.has(_name):
-				continue
-		
-		script += "var %s : %s\n" % [_name, _type]
-		
-		if _type == "Vector3":
-			vector_component.append(_name + "_x")
-			vector_component.append(_name + "_y")
-			vector_component.append(_name + "_z")
-	
-	script += index_dict + "}\n"
-	
-	var fields_file = File.new()
-	var err = fields_file.open(console.cvars["path_prefix"].value + "/cache/entvars.gd", File.WRITE)
-	fields_file.store_string(script)
-	fields_file.close()
-
-
-
-# -----------------------------------------------------
 # _disassemble
 # -----------------------------------------------------
 func _disassemble(p_function):
@@ -655,49 +736,10 @@ func _disassemble(p_function):
 #		console.con_print_error("Parameter <funcname> needed.")
 #		return
 	
-	var func_num : int = -1
+	var ret = _print_func_info(p_function)
 	
-	if not progs.has("functions"):
-		console.con_print_error("No .dat file loaded.")
-		return
-	
-	if p_function.is_valid_integer():
-		func_num = int(p_function)
-	else:
-		for k in progs.functions.keys():
-			if progs.functions[k].s_name == p_function:
-				func_num = k
-	
-	
-	
-	if not progs.functions.has(func_num):
-		console.con_print_error("Function <%d> not found." % func_num)
-		return
-	
-	var function = progs.functions[func_num]
-	var builtin = false
-	
-	if function.first_statement < 1:
-		builtin = true
-	
-	var first_statement_str : String
-	
-	if builtin:
-		first_statement_str = "builtin #%d" % func_num
-	else:
-		first_statement_str = str(function.first_statement)
-	
-	console.con_print("----------------------------------")
-	console.con_print("function[%d]: %s" % [func_num, function.s_name] )
-	console.con_print("----------------------------------")
-	console.con_print("first_statement: %s" % first_statement_str)
-	console.con_print("parm_start: %d" % function.parm_start)
-	console.con_print("locals: %d" % function.locals)
-	console.con_print("profile: %d" % function.profile)
-	console.con_print("s_file: %s" % function.s_file)
-	console.con_print("numparms: %d" % function.numparms)
-	console.con_print("parm_size[8]: [%d %d %d %d -- %d %d %d %d]" % function.parm_size)
-	console.con_print("----------------------------------")
+	var function = ret[0]
+	var builtin = ret[1]
 	
 	if not builtin:
 	
@@ -715,20 +757,88 @@ func _disassemble(p_function):
 			var info_b = ""
 			var info_c = ""
 			
-#			if op == opcode.OP_LOAD_F:
-#				info_a = progs.globaldefs[a].s_name
-#
-#				progs.globals.seek(b*4)
-#				var _b = progs.globals.get_u32()
-#				info_b = progs.fielddefs[_b].s_name
-			
-			console.con_print("%d:\t [%d]\t%s " % [st, op, _get_opcode_name(op)])
-			console.con_print("\t\t\t a:\t%d\t%s" % [a, info_a])
-			console.con_print("\t\t\t b:\t%d\t%s" % [b, info_b])
-			console.con_print("\t\t\t c:\t%d\t%s" % [c, info_c])
+			console.con_print("%7d:   %s " % [st, _get_opcode_name(op)])
+			console.con_print("\t\t\t a:%7d     %s" % [a, info_a])
+			console.con_print("\t\t\t b:%7d     %s" % [b, info_b])
+			console.con_print("\t\t\t c:%7d     %s" % [c, info_c])
 		
 			#console.con_print("%d: %s\n\ta: %d\n\tb: %d\n\tc: %d\n" % [ i, _get_opcode_name(op), a, b, c ] )
 			i += 1
+
+
+
+func _print_func_info(p_function, debug_level=0):
+	var func_num : int = -1
+	
+	if not progs.has("functions"):
+		console.con_print_error("No .dat file loaded.")
+		return
+	
+	##Fixme
+	p_function = str(p_function)
+	
+	if p_function.is_valid_integer():
+		func_num = int(p_function)
+	else:
+		for i in range(1,progs.functions.size()):
+			if progs.functions[i].s_name == p_function:
+				func_num = i
+	
+	if func_num == -1:
+		console.con_print_error("Function <%d> not found." % func_num)
+		return
+	
+	var function = progs.functions[func_num]
+	var builtin = false
+	
+	if function.first_statement < 1:
+		builtin = true
+	
+	var first_statement_str : String
+	
+	if builtin:
+		first_statement_str = "builtin #%d" % func_num
+	else:
+		first_statement_str = str(function.first_statement)
+	
+	var lines := PoolStringArray()
+	
+	lines.push_back("----------------------------------")
+	lines.push_back("function[%d]: %s" % [func_num, function.s_name])
+	lines.push_back("----------------------------------")
+	lines.push_back("first_statement: %s" % first_statement_str)
+	lines.push_back("parm_start: %d" % function.parm_start)
+	lines.push_back("locals: %d" % function.locals)
+	lines.push_back("profile: %d" % function.profile)
+	lines.push_back("s_file: %s" % function.s_file)
+	lines.push_back("numparms: %d" % function.numparms)
+	lines.push_back("parm_size[8]: [%d %d %d %d -- %d %d %d %d]" % function.parm_size)
+	lines.push_back("----------------------------------")
+	
+	if debug_level == 0:
+		for line in lines:
+			console.con_print(line)
+	else:
+		for line in lines:
+			console.con_print_debug(debug_level, line)
+	
+	
+	
+#	console.con_print("----------------------------------")
+#	console.con_print("function[%d]: %s" % [func_num, function.s_name] )
+#	console.con_print("----------------------------------")
+#	console.con_print("first_statement: %s" % first_statement_str)
+#	console.con_print("parm_start: %d" % function.parm_start)
+#	console.con_print("locals: %d" % function.locals)
+#	console.con_print("profile: %d" % function.profile)
+#	console.con_print("s_file: %s" % function.s_file)
+#	console.con_print("numparms: %d" % function.numparms)
+#	console.con_print("parm_size[8]: [%d %d %d %d -- %d %d %d %d]" % function.parm_size)
+#	console.con_print("----------------------------------")
+	
+	return [function, builtin]
+
+
 
 const OFS_NULL = 0
 const OFS_RETURN = 1
@@ -771,9 +881,13 @@ var lightstyles : Dictionary
 # -----------------------------------------------------
 func _PR_EnterFunction(funcnum : int):
 	
-	console.con_print_debug(console.DEBUG_MEDIUM,
-			"_PR_EnterFunction: %s",
-			[ progs.functions[funcnum].s_name] )
+	if console.debug_level >= console.DEBUG_MEDIUM:
+		
+		console.con_print_debug(console.DEBUG_MEDIUM,
+				"_PR_EnterFunction: %s",
+				[ progs.functions[funcnum].s_name] )
+				
+		_print_func_info(funcnum, console.DEBUG_MEDIUM)
 	
 	pr_stack.push_back( { "s": pr_xstatement, "f": pr_xfunction} )
 	pr_depth += 1
@@ -790,10 +904,8 @@ func _PR_EnterFunction(funcnum : int):
 	if locals + localstack_used > LOCALSTACK_SIZE:
 		console.con_print_error("PR_ExecuteProgram: locals stack overflow")
 	
-	progs.globals.seek(parm_start * 4 )
-	
 	for i in range(locals):
-		localstack.push_back(progs.globals.get_u32())
+		localstack.push_back(progs.globals[parm_start+i])
 		
 	localstack_used += locals
 	
@@ -806,14 +918,16 @@ func _PR_EnterFunction(funcnum : int):
 	
 	for i in range(numparms):
 		for j in range(parm_size[i]):
-			progs.globals.seek(OFS_PARM0 + i * 3 + j * 4)
-			var value = progs.globals.get_u32()
 			
-			progs.globals.seek(o)
-			progs.globals.put_u32(value)
-			o += 4
+			var value = progs.globals[OFS_PARM0 + i * 3 + j]
+			
+			progs.globals[o] = value
+			
+			o += 1
 	
 	pr_xfunction = funcnum
+	
+
 	
 	return progs.functions[funcnum].first_statement - 1
 
@@ -841,10 +955,8 @@ func _PR_LeaveFunction():
 	if c < 0:
 		console.con_print_error("PR_ExecuteProgram: locals stack underflow")
 	
-	progs.globals.seek(progs.functions[pr_xfunction].parm_start)
-	
 	for i in range(c):
-		progs.globals.put_32( localstack.pop_back() )
+		progs.globals[progs.functions[pr_xfunction].parm_start] = localstack.pop_back()
 	
 	pr_depth -= 1
 	
@@ -868,9 +980,10 @@ func exec(p_function):
 	if p_function.is_valid_integer():
 		func_num = int(p_function)
 	else:
-		for k in progs.functions.keys():
-			if progs.functions[k].s_name == p_function:
-				func_num = k
+		for i in range(1, progs.functions.size()):
+			if progs.functions[i].s_name == p_function:
+				func_num = i
+				break
 	
 	exitdepth = pr_depth
 	
@@ -889,8 +1002,10 @@ func exec(p_function):
 		var b = st.b
 		var c = st.c
 		
+		##debug-begin##
 		if console.debug_level >= console.DEBUG_HIGH:
-			console.con_print_debug(console.DEBUG_HIGH, "%d:   %s %d %d %d", [s, _get_opcode_name( st.op ), a, b, c])
+			console.con_print_debug(console.DEBUG_HIGH, "%5d:   %-15s %7d %7d %7d", [s, _get_opcode_name( st.op ), a, b, c])
+		##debug-end##
 		
 		match st.op:
 			
@@ -966,6 +1081,9 @@ func exec(p_function):
 			opcode.OP_LOAD_F, opcode.OP_LOAD_FLD, opcode.OP_LOAD_ENT, opcode.OP_LOAD_S, opcode.OP_LOAD_FNC, opcode.OP_LOAD_V:
 				_OP_LOAD(st)
 			
+			opcode.OP_IF:
+				s = _OP_IF(st, s)
+			
 			opcode.OP_IFNOT:
 				s = _OP_IFNOT(st, s)
 			
@@ -999,455 +1117,316 @@ func exec(p_function):
 
 
 func _OP_ADD_F(st):
-	progs.globals.seek(st.a * 4)
-	var a = progs.globals.get_float()
+	var va := _get_global_float(st.a)
+	var vb := _get_global_float(st.b)
 	
-	progs.globals.seek(st.b * 4)
-	var b = progs.globals.get_float()
-	
-	progs.globals.seek(st.c * 4)
-	progs.globals.put_float(a + b)
-
+	_set_global_float(st.c, va + vb)
 
 
 func _OP_ADD_V(st):
-	progs.globals.seek(st.a * 4)
-	var ax = progs.globals.get_float()
-	var ay = progs.globals.get_float()
-	var az = progs.globals.get_float()
+	var va := _get_global_vector(st.a)
+	var vb := _get_global_vector(st.b)
 	
-	progs.globals.seek(st.b * 4)
-	var bx = progs.globals.get_float()
-	var by = progs.globals.get_float()
-	var bz = progs.globals.get_float()
-	
-	progs.globals.seek(st.c * 4)
-	progs.globals.put_float(ax + bx)
-	progs.globals.put_float(ay + by)
-	progs.globals.put_float(az + bz)
+	_set_global_vector(st.c, va + vb)
 
 
 
 func _OP_SUB_F(st):
-	progs.globals.seek(st.a * 4)
-	var a = progs.globals.get_float()
+	var va := _get_global_float(st.a)
+	var vb := _get_global_float(st.b)
 	
-	progs.globals.seek(st.b * 4)
-	var b = progs.globals.get_float()
-	
-	progs.globals.seek(st.c * 4)
-	progs.globals.put_float(a-b)
+	_set_global_float(st.c, va - vb)
 
 
 
 func _OP_SUB_V(st):
-	progs.globals.seek(st.a * 4)
-	var ax = progs.globals.get_float()
-	var ay = progs.globals.get_float()
-	var az = progs.globals.get_float()
+	var va := _get_global_vector(st.a)
+	var vb := _get_global_vector(st.b)
 	
-	progs.globals.seek(st.b * 4)
-	var bx = progs.globals.get_float()
-	var by = progs.globals.get_float()
-	var bz = progs.globals.get_float()
-	
-	progs.globals.seek(st.c * 4)
-	progs.globals.put_float(ax * bx + ay * by + az * bz)
+	_set_global_vector(st.c, va - vb)
 
 
 
 func _OP_MUL_F(st):
-	progs.globals.seek(st.a * 4)
-	var a = progs.globals.get_float()
+	var va := _get_global_float(st.a)
+	var vb := _get_global_float(st.b)
 	
-	progs.globals.seek(st.b * 4)
-	var b = progs.globals.get_float()
-	
-	progs.globals.seek(st.c * 4)
-	progs.globals.put_float(a * b)
+	_set_global_float(st.c, va * vb)
 
 
 
 func _OP_MUL_V(st):
-	progs.globals.seek(st.a * 4)
-	var ax = progs.globals.get_float()
-	var ay = progs.globals.get_float()
-	var az = progs.globals.get_float()
+	var va := _get_global_vector(st.a)
+	var vb := _get_global_vector(st.b)
 	
-	progs.globals.seek(st.b * 4)
-	var bx = progs.globals.get_float()
-	var by = progs.globals.get_float()
-	var bz = progs.globals.get_float()
-	
-	progs.globals.seek(st.c * 4)
-	progs.globals.put_float(ax - bx)
-	progs.globals.put_float(ay - by)
-	progs.globals.put_float(az - bz)
+	_set_global_float(st.c, va.dot(vb) )
 
 
 
 
 func _OP_MUL_VF(st):
-	progs.globals.seek(st.a * 4)
-	var a = progs.globals.get_float()
+	var va := _get_global_vector(st.a)
+	var vb := _get_global_vector(st.b)
 	
-	progs.globals.seek(st.b * 4)
-	var bx = progs.globals.get_float()
-	var by = progs.globals.get_float()
-	var bz = progs.globals.get_float()
-	
-	progs.globals.seek(st.c * 4)
-	progs.globals.put_float(a * bx)
-	progs.globals.put_float(a * by)
-	progs.globals.put_float(a * bz)
+	_set_global_vector(st.c, va * vb)
 
 
 
 func _OP_DIV_F(st):
-	progs.globals.seek(st.a * 4)
-	var a = progs.globals.get_float()
+	var va := _get_global_float(st.a)
+	var vb := _get_global_float(st.b)
 	
-	progs.globals.seek(st.b * 4)
-	var b = progs.globals.get_float()
-	
-	progs.globals.seek(st.c * 4)
-	progs.globals.put_float(a / b)
+	_set_global_float(st.c, va / vb)
 
 
 
 func _OP_BITAND(st):
-	progs.globals.seek(st.a * 4)
-	var a = progs.globals.get_u32()
+	var va := int(_get_global_float(st.a))
+	var vb := int(_get_global_float(st.b))
 	
-	progs.globals.seek(st.b * 4)
-	var b = progs.globals.get_u32()
+	var vc = va & vb
+	vc = vc & 0xFFFFFFFF
 	
-	var c = a and b
-	progs.globals.seek(st.c * 4)
-	progs.globals.put_u32(c)
+	_set_global_float(st.c, float(vc))
 
 
 
 func _OP_GE(st):
-	progs.globals.seek(st.a * 4)
-	var a = progs.globals.get_float()
+	var va := _get_global_float(st.a)
+	var vb := _get_global_float(st.b)
 	
-	progs.globals.seek(st.b * 4)
-	var b = progs.globals.get_float()
-	
-	progs.globals.seek(st.c * 4)
-	progs.globals.put_float(a >= b)
+	if va >= vb:
+		_set_global_float(st.c, 1.0)
+	else:
+		_set_global_float(st.c, 0.0)
 
 
 
 func _OP_LE(st):
-	progs.globals.seek(st.a * 4)
-	var a = progs.globals.get_float()
+	var va := _get_global_float(st.a)
+	var vb := _get_global_float(st.b)
 	
-	progs.globals.seek(st.b * 4)
-	var b = progs.globals.get_float()
-	
-	progs.globals.seek(st.c * 4)
-	progs.globals.put_float(a <= b)
+	if va <= vb:
+		_set_global_float(st.c, 1.0)
+	else:
+		_set_global_float(st.c, 0.0)
 
 
 
 func _OP_GT(st):
-	progs.globals.seek(st.a * 4)
-	var a = progs.globals.get_float()
+	var va := _get_global_float(st.a)
+	var vb := _get_global_float(st.b)
 	
-	progs.globals.seek(st.b * 4)
-	var b = progs.globals.get_float()
-	
-	progs.globals.seek(st.c * 4)
-	progs.globals.put_float(a > b)
+	if va > vb:
+		_set_global_float(st.c, 1.0)
+	else:
+		_set_global_float(st.c, 0.0)
 
 
 
 func _OP_NOT_F(st):
-	progs.globals.seek(st.a * 4)
-	var a = progs.globals.get_float()
+	var va := _get_global_float(st.a)
 	
-	progs.globals.seek(st.c * 4)
-	progs.globals.put_float(-a)
+	if va == 0.0:
+		_set_global_float(st.c, 1.0)
+	else:
+		_set_global_float(st.c, 0.0)
 
 
 
 func _OP_OR(st):
-	progs.globals.seek(st.a * 4)
-	var a = progs.globals.get_float()
+	var va := int(_get_global_float(st.a))
+	var vb := int(_get_global_float(st.b))
 	
-	progs.globals.seek(st.b * 4)
-	var b = progs.globals.get_float()
-	
-	progs.globals.seek(st.c * 4)
-	progs.globals.put_float(a || b)
+	_set_global_float(st.c, float( va | vb) )
 
 
 
 func _OP_NOT_S(st):
-	progs.globals.seek(st.a * 4)
-	var a = progs.globals.get_32()
+	var va := _get_global_string(st.a)
 	
-	progs.globals.seek(st.c * 4)
-	
-	if a < 0:
-		progs.globals.put_float(0)
-		return
-	
-	if a != 0:
-		progs.globals.put_float(0)
-		return
-		
-	if !progs.strings[a]:
-		progs.globals.put_float(0)
-		return
-		
-	progs.globals.put_float(1)
-	return	
+	if not va == "":
+		_set_global_float(st.c, 0.0)
+	else:
+		_set_global_float(st.c, 1.0)
 
 
 
 func _OP_EQ_F(st):
-	progs.globals.seek(st.a * 4)
-	var a = progs.globals.get_float()
+	var va := _get_global_float(st.a)
+	var vb := _get_global_float(st.b)
 	
-	progs.globals.seek(st.b * 4)
-	var b = progs.globals.get_float()
-	
-	progs.globals.seek(st.c * 4)
-	
-	if a == b:
-		progs.globals.put_float(1)
+	if va == vb:
+		_set_global_float(st.c, 1.0)
 	else:
-		progs.globals.put_float(0)
+		_set_global_float(st.c, 0.0)
 
 
 
 func _OP_EQ_V(st):
-	for i in range(3):
-		progs.globals.seek(st.a * 4 + i * 4)
-		var a = progs.globals.get_float()
-		
-		progs.globals.seek(st.b * 4 + i * 4)
-		var b = progs.globals.get_float()
-		
-		if a != b:
-			progs.globals.seek(st.c * 4)
-			progs.globals.put_float(0)
-			return
+	var va := _get_global_vector(st.a)
+	var vb := _get_global_vector(st.b)
 	
-	progs.globals.seek(st.c * 4)
-	progs.globals.put_float(0)
+	if va == vb:
+		_set_global_float(st.c, 1.0)
+	else:
+		_set_global_float(st.c, 0.0)
 
 
 
 func _OP_EQ_S(st):
-	progs.globals.seek(st.a * 4)
-	var a = progs.globals.get_32()
+	var va := _get_global_string(st.a)
+	var vb := _get_global_string(st.b)
 	
-	progs.globals.seek(st.b * 4)
-	var b = progs.globals.get_32()
-	
-	var str_a : String = ""
-	var str_b : String = ""
-	
-	if a < 0:
-		str_a = pr_strings[a]
+	if va == vb:
+		_set_global_float(st.c, 1.0)
 	else:
-		str_a = progs.strings[a]
-	
-	if b < 0:
-		str_b = pr_strings[b]
-	else:
-		str_b = progs.strings[b]
-	
-	
-	progs.globals.seek(st.c * 4)
-	
-	if str_a == str_b:
-		progs.globals.put_float(1)
-	else:
-		progs.globals.put_float(0)
+		_set_global_float(st.c, 0.0)
 
 
 
 func _OP_NE_V(st):
-	progs.globals.seek(st.a * 4)
-	var ax = progs.globals.get_float()
-	var ay = progs.globals.get_float()
-	var az = progs.globals.get_float()
 	
-	progs.globals.seek(st.b * 4)
-	var bx = progs.globals.get_float()
-	var by = progs.globals.get_float()
-	var bz = progs.globals.get_float()
+	var va := _get_global_vector(st.a)
+	var vb := _get_global_vector(st.b)
 	
-	progs.globals.seek(st.c * 4)
-	progs.globals.put_float( ax != bx || ay != by || az != bz )
+	if va != vb:
+		_set_global_float(st.c, 1.0)
+	else:
+		_set_global_float(st.c, 0.0)
 
 
 
 func _OP_STORE(st):
-	progs.globals.seek(st.a * 4)
-	var value = progs.globals.get_u32()
-	progs.globals.seek(st.b * 4)
-	progs.globals.put_u32(value)
-#	console.con_print("[PROGS] _OP_STORE: %d" % value)
+	progs.globals[st.b] = progs.globals[st.a]
 
 
 
 func _OP_STORE_V(st):
-	progs.globals.seek(st.a * 4)
-	var x = progs.globals.get_u32()
-	var y = progs.globals.get_u32()
-	var z = progs.globals.get_u32()
-	
-	progs.globals.seek(st.b * 4)
-	progs.globals.put_u32(x)
-	progs.globals.put_u32(y)
-	progs.globals.put_u32(z)
+	progs.globals[st.b] = progs.globals[st.a]
+	progs.globals[st.b+1] = progs.globals[st.a+1]
+	progs.globals[st.b+2] = progs.globals[st.a+2]
 
 
 
 func _OP_STOREP(st):
-	progs.globals.seek(st.b * 4)
-	var offset = progs.globals.get_u32()
 	
-	var ent = entities.entities[pr_pointer[st.b]]
+	var vb = progs.globals[st.b]
+	
+	var ent = instance_from_id( vb[0] )
 	var entvars = ent.get_meta("entvars")
-	var key = entvars.index[offset]
-	
-	if key.ends_with("_x"):
-		key.erase(key.length() -2, 2)
-	
-
+	var name = entvars.offset[vb[1]]
 	
 	match st.op:
 		opcode.OP_STOREP_S:
-			progs.globals.seek(st.a * 4)
-			var source = progs.globals.get_u32()
-			entvars[key] = progs.strings[source]
+			entvars[name] = _get_global_string(st.a)
 			
 		opcode.OP_STOREP_ENT:
-			progs.globals.seek(st.a * 4)
-			var source = progs.globals.get_u32()
-			entvars[key] = entities.entities[source]
+			entvars[name] = _get_global_ent(st.a)
 		
 		opcode.OP_STOREP_F:
-			progs.globals.seek(st.a * 4)
+			var f := _get_global_float(st.a)
 			
-			var f = progs.globals.get_float()
-			
-			if key.ends_with("_x"):
-				key.erase(key.length() -2, 2)
-				entvars[key].x = f
+			if name.ends_with("_x"):
+				name = entvars.offset_vec[vb[1]]
+				entvars[name].x = f
 				
-			elif key.ends_with("_y"):
-				key.erase(key.length() -2, 2)
-				entvars[key].y = f
+			elif name.ends_with("_y"):
+				name = entvars.offset_vec[vb[1]-1]
+				entvars[name].y = f
 				
-			elif key.ends_with("_z"):
-				key.erase(key.length() -2, 2)
-				entvars[key].z = f
+			elif name.ends_with("_z"):
+				name = entvars.offset_vec[vb[1]-2]
+				entvars[name].z = f
 			else:
-				entvars[key] = f
+				entvars[name] = f
 		
 		opcode.OP_STOREP_V:
-			progs.globals.seek(st.a * 4)
-			var x = progs.globals.get_u32()
-			var y = progs.globals.get_u32()
-			var z = progs.globals.get_u32()
-			entvars[key] = Vector3(x,y,z)
+			name = entvars.offset_vec[vb[1]]
+			entvars[name] = _get_global_vector(vb[1])
 		
 		opcode.OP_STOREP_FNC:
-			progs.globals.seek(st.a * 4)
-			var fnc = progs.globals.get_32()
-			entvars[key] = fnc
+			entvars[name] = _get_global_int(st.a)
 		_:
 			console.con_print_warn("[PROGS] _OP_STOREP: Type not implementet")
-	
-#
-#	progs.globals.seek(st.a * 4)
-#	progs.globals.get_u32(value)
-	
-#	console.con_print("[PROGS] _OP_STORE: %d" % value)
+
 
 
 func _OP_ADDRESS(st):
-	progs.globals.seek(st.a * 4)
-	var a = progs.globals.get_u32()
+	var va = progs.globals[st.a]
+	var vb = progs.globals[st.b]
 	
-	progs.globals.seek(st.b * 4)
-	var b = progs.globals.get_u32()
-	
-	progs.globals.seek(st.c * 4)
-	progs.globals.put_32(b)
-	pr_pointer[st.c] = a
-	
-	#console.con_print("[PROGS] _OP_ADDRESS: %d -- %d" % [a, b])
+	progs.globals[st.c] = [va, vb]
 
 
 
 func _OP_LOAD(st):
-	progs.globals.seek(st.a * 4)
-	var a = progs.globals.get_u32()
+	var va = progs.globals[st.a]
+	var vb = progs.globals[st.b]
 	
-	progs.globals.seek(st.b * 4)
-	var b = progs.globals.get_u32()
-	
-	var ent = entities.entities[a]
+	var ent = instance_from_id(va)
 	var entvars = ent.get_meta("entvars")
-	var key = entvars.index[b]
-	
-	if st.op == opcode.OP_LOAD_V and key.ends_with("_x"):
-		key.erase(key.length() -2, 2)
+	var name = entvars.offset[vb]
 	
 	var evar
 	
-	if st.op == opcode.OP_LOAD_F:
-		if key.ends_with("_x"):
-			key.erase(key.length() -2, 2)
-			evar = entvars[key].x
+	match st.op:
+		opcode.OP_LOAD_F:
+			if name.ends_with("_x"):
+				name = entvars.offset_vec[vb]
+				evar = entvars[name].x
+				
+			elif name.ends_with("_y"):
+				name = entvars.offset_vec[vb-1]
+				evar = entvars[name].y
+				
+			elif name.ends_with("_z"):
+				name = entvars.offset_vec[vb-2]
+				evar = entvars[name].z
 			
-		elif key.ends_with("_y"):
-			key.erase(key.length() -2, 2)
-			evar = entvars[key].y
-			
-		elif key.ends_with("_z"):
-			key.erase(key.length() -2, 2)
-			evar = entvars[key].z
-		else:
-			evar = entvars[key]
-
-	else:
-		evar = entvars[key]
-	
-	progs.globals.seek(st.c * 4)
+			else:
+				evar = entvars[name]
+		
+		opcode.OP_LOAD_V:
+			name = entvars.offset_vec[vb]
+			evar = entvars[name]
+		
+		_:
+			evar = entvars[name]
 	
 	match st.op:
 		opcode.OP_LOAD_ENT:
-			progs.globals.put_32( evar.get_instance_id() )
+			progs.globals[st.c] = evar.get_instance_id() 
 		opcode.OP_LOAD_S:
-			progs.globals.put_32( pr_string_num )
-			pr_strings[pr_string_num] = evar
-			pr_string_num -= 1
+			progs.strings[-st.c] = evar
+			progs.globals[st.c] = -st.c
 		opcode.OP_LOAD_F:
-			progs.globals.put_float( evar )
+			progs.globals[st.c] = evar
 		opcode.OP_LOAD_V:
-			progs.globals.put_float( evar.x )
-			progs.globals.put_float( evar.y )
-			progs.globals.put_float( evar.z )
+			progs.globals[st.c] = evar.x
+			progs.globals[st.c+1] = evar.y
+			progs.globals[st.c+2] = evar.z
 		_:
 			console.con_print_warn("[PROGS] _OP_LOAD: Type not implementet")
 
 
 
-func _OP_IFNOT(st, s):
-	progs.globals.seek(st.a * 4)
-	var a = progs.globals.get_u32()
+func _OP_IF(st, s):
 	
-	if a == 0:
+	var va = _get_global_float(st.a)
+	
+	if va == 1.0:
+		s += st.b - 1
+	
+	return s
+
+
+
+func _OP_IFNOT(st, s):
+	
+	var va = _get_global_float(st.a)
+	
+	if va == 0.0:
 		s += st.b - 1
 	
 	return s
@@ -1455,29 +1434,23 @@ func _OP_IFNOT(st, s):
 
 
 func _OP_GOTO(st, s):
-	progs.globals.seek(st.a * 4)
-	var a = progs.globals.get_u32()
 	
 	return s + st.a - 1
 
 
 
 func _OP_CALL(st, s):
-	var pr_argc = st.op - opcode.OP_CALL0
+#	var pr_argc = st.op - opcode.OP_CALL0
 	
-	progs.globals.seek(st.a * 4)
-	var a = progs.globals.get_32()
+	var va = progs.globals[st.a]
 	
-	if not progs.functions.has(a):
-		console.con_print_error("[PROGS] _OP_CALL: funcnum %d not found!"% a)
-	
-	if progs.functions[a].first_statement < 0:
-		_call_builtin(st, -progs.functions[a].first_statement)
+	if progs.functions[va].first_statement < 0:
+		# call builtin funtion
+		_call_builtin(st, -progs.functions[va].first_statement)
 		return s
-	
-	#console.con_print("[PROGS] _OP_CALL: args %d -- funcnum: %d" % [pr_argc, a])
-	
-	return _PR_EnterFunction(a)
+	else:
+		# call quakec function
+		return _PR_EnterFunction(va)
 
 
 
@@ -1489,6 +1462,7 @@ func _call_builtin(st, bfunc):
 		4:	_builtin_4_setsize(st)
 		7:	_builtin_7_random(st)
 		14: _builtin_14_spawn(st)
+		15: _builtin_15_remove(st)
 		19: _builtin_19_precache_sound(st)
 		20: _builtin_20_precache_model(st)
 		34: _builtin_34_droptofloor(st)
@@ -1604,6 +1578,7 @@ func _builtin_2_setorigin(st) -> void:
 #    path - The path to the model file to set.
 #           Can be a model (.mdl), sprite (.spr) or map (.bsp)
 # -----------------------------------------------------------------------------
+##inline##
 func _builtin_3_setmodel(st) -> void:
 	
 	var ent = _get_global_ent(OFS_PARM0)
@@ -1614,7 +1589,7 @@ func _builtin_3_setmodel(st) -> void:
 #	entvars["model"] = path
 #	entvars["modelindex"] = 1234
 	
-	add_child(bsp.bsp_meshes[int(entvars.model)])
+#	add_child(bsp.bsp_meshes[int(entvars.model)])
 	
 	if console.debug_level >= console.DEBUG_MEDIUM:
 		console.con_print_debug(console.DEBUG_MEDIUM, "_builtin_3_setmodel: " )
@@ -1635,31 +1610,14 @@ func _builtin_3_setmodel(st) -> void:
 #    mins - The coordinates of the minimum corner of the bounding box (ex: VEC_HULL2_MIN)
 #    maxs - The coordinates of the maximum corner of the bounding box (must be larger than mins) (ex: VEC_HULL2_MIN)
 # -----------------------------------------------------------------------------
+##inline##
 func _builtin_4_setsize(st):
-	progs.globals.seek(OFS_PARM0 * 4)
-	var parm0 = progs.globals.get_32()
 	
-	progs.globals.seek(OFS_PARM1 * 4)
-	var parm1 = progs.globals.get_32()
+	var e := _get_global_ent(OFS_PARM0)
+	var mins := _get_global_vector(OFS_PARM1)
+	var maxs := _get_global_vector(OFS_PARM2)
 	
-	progs.globals.seek(OFS_PARM2 * 4)
-	var parm2 = progs.globals.get_32()
-	
-	var ent = entities.entities[parm0]
-
-	progs.globals.seek(parm1 * 4)
-	var mins : Vector3 = Vector3()
-	mins.x = progs.globals.get_float()
-	mins.y = progs.globals.get_float()
-	mins.z = progs.globals.get_float()
-	
-	progs.globals.seek(parm1 * 4)
-	var maxs : Vector3 = Vector3()
-	maxs.x = progs.globals.get_float()
-	maxs.y = progs.globals.get_float()
-	maxs.z = progs.globals.get_float()
-	
-	var entvars = ent.get_meta("entvars")
+	var entvars = e.get_meta("entvars")
 	entvars["mins"] = mins
 	entvars["maxs"] = maxs
 	
@@ -1674,10 +1632,13 @@ func _builtin_4_setsize(st):
 #	Returns a floating point value greater than or equal to 0 and less than 1.
 #
 # -----------------------------------------------------------------------------
+##inline##
 func _builtin_7_random(st):
+	
 	var random = randf()
-	progs.globals.seek(OFS_RETURN * 4)
-	progs.globals.put_float(random)
+	
+	_set_global_float(OFS_RETURN, random)
+	
 	console.con_print_debug(console.DEBUG_MEDIUM, "_builtin_7_random: %f" %  random)
 
 
@@ -1687,10 +1648,21 @@ func _builtin_14_spawn(st) -> void:
 	
 	var ent = entities.spawn()
 	
-	_set_global_int(OFS_RETURN, ent.get_instance_id())
+	progs.globals[OFS_RETURN] = ent.get_instance_id()
 	
 	##debug##
 	console.con_print_debug(console.DEBUG_MEDIUM, "_builtin_14_spawn: %d" %  ent.get_instance_id())
+
+
+##inline##
+func _builtin_15_remove(st) -> void:
+	
+	var ent = _get_global_ent(OFS_PARM0)
+	
+	entities.remove(ent)
+	
+	##debug##
+	console.con_print_debug(console.DEBUG_MEDIUM, "_builtin_15_remove: %d" %  ent.get_instance_id())
 
 
 
@@ -1717,8 +1689,8 @@ func _builtin_20_precache_model(st) -> void:
 	var filename := _get_global_string(OFS_PARM0)
 	
 	##FIXME##
-	if not cached_models.has(filename):
-		cached_models[filename] = ""
+#	if not cached_models.has(filename):
+#		cached_models[filename] = ""
 	
 	_set_global_int(OFS_RETURN, parm0)
 	
@@ -1743,13 +1715,12 @@ func _builtin_20_precache_model(st) -> void:
 #	    Returns TRUE if the entity landed on the ground and FALSE if it was still in the air.
 #
 # -----------------------------------------------------------------------------
+##inline##
 func _builtin_34_droptofloor(st):
-	progs.globals.seek(OFS_SELF * 4)
-	var _self = progs.globals.get_32()
-	var ent = entities.entities[_self]
 	
-	progs.globals.seek(OFS_RETURN * 4)
-	progs.globals.put_float(1)
+	var e := _get_global_ent(OFS_SELF)
+	
+	_set_global_float(OFS_RETURN, 1.0)
 	
 	console.con_print_debug(console.DEBUG_MEDIUM, "_builtin_34_droptofloor: ")
 
@@ -1775,14 +1746,14 @@ func _builtin_35_lightstyle(st) -> void:
 # Returns absolute value of val (like the equivalent function in C).
 #
 # -----------------------------------------------------------------------------
+##inline##
 func _builtin_43_fabs(st):
-	progs.globals.seek(OFS_PARM0 * 4)
-	var f = progs.globals.get_float()
 	
-	progs.globals.seek(OFS_RETURN * 4)
-	progs.globals.put_float(abs(f))
+	var f = _get_global_float(OFS_PARM0)
 	
-	console.con_print_debug(console.DEBUG_MEDIUM, "_builtin_43_fabs: %f" % f )
+	progs.globals[OFS_RETURN] = abs(f)
+	
+	console.con_print_debug(console.DEBUG_MEDIUM, "_builtin_43_fabs: %f" % abs(f) )
 
 
 
@@ -1817,30 +1788,13 @@ func _builtin_72_cvar_set(st):
 #    attenuation - A value greater than or equal to 0 and less than 4 that controls how fast the sound's volume attenuated from distance.
 #                  0 can be heard everywhere in the level, 1 can be heard up to 1000 units and 3.999 has a radius of about 250 units.
 # -----------------------------------------------------------------------------
+##inline##
 func _builtin_74_ambientsound(st):
-	# vector -- pos
-	progs.globals.seek(OFS_PARM0 * 4)
-	var pos : Vector3 = Vector3()
-	pos.x = progs.globals.get_float()
-	pos.y = progs.globals.get_float()
-	pos.z = progs.globals.get_float()
 	
-	# string -- sample
-	progs.globals.seek(OFS_PARM1 * 4)
-	var parm1 = progs.globals.get_32()
-	var sample : String = ""
-	if parm1 < 0:
-		sample = pr_strings[parm1]
-	else:
-		sample = progs.strings[parm1]
-		
-	# float -- volume
-	progs.globals.seek(OFS_PARM2 * 4)
-	var volume = progs.globals.get_float()
-	
-	# float -- attenuation
-	progs.globals.seek(OFS_PARM3 * 4)
-	var attenuation = progs.globals.get_float()
+	var pos : Vector3 = _get_global_vector(OFS_PARM0)
+	var sample : String = _get_global_string(OFS_PARM1)
+	var volume : float = _get_global_float(OFS_PARM2)
+	var attenuation : float = _get_global_float(OFS_PARM3)
 	
 	console.con_print_debug(console.DEBUG_MEDIUM, "_builtin_74_ambientsound: [%f %f %f], %s, %f, %f" % [pos.x, pos.y, pos.z, sample, volume, attenuation] )
 
@@ -1849,13 +1803,12 @@ func _builtin_74_ambientsound(st):
 ##inline##
 func _get_global_string(num : int) -> String:
 	
-	var ret : String = ""
+	var ret : String
 	
-	progs.globals.seek(num * 4)
-	var str_num = progs.globals.get_32()
+	var str_num = progs.globals[num]
 	
-	if str_num < 0:
-		ret = pr_strings[str_num]
+	if str_num == null:
+		ret = ""
 	else:
 		ret = progs.strings[str_num]
 	
@@ -1868,8 +1821,7 @@ func _get_global_int(num : int) -> int:
 	
 	var ret : int
 	
-	progs.globals.seek(num * 4)
-	ret = progs.globals.get_32()
+	ret = progs.globals[num]
 	
 	return ret
 
@@ -1878,8 +1830,7 @@ func _get_global_int(num : int) -> int:
 ##inline##
 func _set_global_int(num : int, value : int) -> void:
 	
-	progs.globals.seek(num * 4)
-	progs.globals.put_32(value)
+	progs.globals[num] = int(value)
 
 
 
@@ -1888,8 +1839,12 @@ func _get_global_float(num : int) -> float:
 	
 	var ret : float
 	
-	progs.globals.seek(num * 4)
-	ret = progs.globals.get_float()
+	var value = progs.globals[num]
+	
+	if value == null:
+		ret = 0.0
+	else:
+		ret = value
 	
 	return ret
 
@@ -1898,8 +1853,7 @@ func _get_global_float(num : int) -> float:
 ##inline##
 func _set_global_float(num : int, value : float) -> void:
 	
-	progs.globals.seek(num * 4)
-	progs.globals.put_float(value)
+	progs.globals[num] = value
 
 
 
@@ -1908,10 +1862,11 @@ func _get_global_vector(num : int) -> Vector3:
 	
 	var ret : Vector3
 	
-	progs.globals.seek(num * 4)
-	ret.x = progs.globals.get_float()
-	ret.y = progs.globals.get_float()
-	ret.z = progs.globals.get_float()
+	var x = _get_global_float(num)
+	var y = _get_global_float(num+1)
+	var z = _get_global_float(num+2)
+	
+	ret = Vector3(x, y, z)
 	
 	return ret
 
@@ -1919,30 +1874,27 @@ func _get_global_vector(num : int) -> Vector3:
 
 ##inline##
 func _set_global_vector(num : int, value : Vector3) -> void:
-	
-	progs.globals.seek(num * 4)
-	progs.globals.put_float(value.x)
-	progs.globals.put_float(value.y)
-	progs.globals.put_float(value.z)
+	_set_global_float(num, value.x)
+	_set_global_float(num+1, value.y)
+	_set_global_float(num+2, value.z)
 
 
 
 ##inline##
-func _get_global_ent(num : int):
+func _get_global_ent(num : int) -> Spatial:
 	
 	var ret
 	
-	progs.globals.seek(num * 4)
-	var ent_num = progs.globals.get_u32()
+	var ent_num = progs.globals[num]
 	
-	ret = entities.entities[ent_num]
+	ret = instance_from_id(ent_num)
 	
 	return ret
 
 
 
 ##inline##
-func _set_global_ent(num : int, value) -> void:
+func _set_global_ent(num : int, value : Spatial) -> void:
 	
 	progs.globals.seek(num * 4)
 	progs.globals.put_u32(value.get_instance_id())
@@ -1950,39 +1902,32 @@ func _set_global_ent(num : int, value) -> void:
 
 
 
-func set_global_by_name(name, value):
-	var key = progs.globals_by_name[name]
-	var def = progs.globaldefs[key]
+func set_global_by_name(name : String, value) -> void:
+	
+	var num = progs.dprograms.num_globaldefs
+	
+	var def
+	
+	var found := false
+	
+	for i in range(1, num-1):
+		if progs.globaldefs[i].s_name == name:
+			def = progs.globaldefs[i]
+			found = true
+	
+	if not found:
+		console.con_print_warn("Could not find global definition with the s_name: %s !" % name)
+		return
 	
 	match typeof(value):
 		TYPE_INT:
-			progs.globals.seek(def.offset * 4)
-			progs.globals.put_32(value)
+			_set_global_int(def.offset, value)
 		TYPE_REAL:
-			progs.globals.seek(def.offset * 4)
-			progs.globals.put_float(value)
+			_set_global_float(def.offset, value)
 		TYPE_VECTOR3:
-			progs.globals.seek(def.offset * 4)
-			progs.globals.put_float(value.x)
-			progs.globals.put_float(value.y)
-			progs.globals.put_float(value.z)
+			_set_global_vector(def.offset, value)
 
 
-
-func get_global_by_name(name):
-	var key = progs.globals_by_name[name]
-	var def = progs.globaldefs[key]
-	
-	match typeof(def.type):
-		EV_FLOAT:
-			progs.globals.seek(def.offset * 4)
-			return progs.globals.get_32()
-
-
-
-func set_global_by_offset(offset, value):
-	progs.globals.seek(offset * 4)
-	progs.globals.put_32(value)
 
 # -----------------------------------------------------
 # _ready
@@ -2071,12 +2016,12 @@ func _confunc_progs_generate_entvars_script():
 
 func _confunc_progs_global(args):
 	progs.globals.seek(int(args[1]) * 4)
-	var value = progs.globals.get_32()
+	var value = progs.globals.get_u32()
 	console.con_print(str(value))
 
 
 
-func _get_type_sting(type):
+func _get_type_string(type):
 	# enum {EV_VOID, EV_STRING, EV_FLOAT, EV_VECTOR, EV_ENTITY, EV_FIELD, EV_FUNCTION, EV_POINTER }
 	match type:
 		EV_VOID:

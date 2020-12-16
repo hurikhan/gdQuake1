@@ -410,21 +410,12 @@ func _get_entities(data, header):
 				
 				var value = i.substr(name_end + 3, len(i) - name_end - 4 ) 
 				
-				if name == "origin" or name == "mangle":
-					var xyz = value.split(" ")
-					var x = float(xyz[0])
-					var y = float(xyz[1])
-					var z = float(xyz[2])
-					value = Vector3(x, y, z)
-				
-				if name == "model":
-					if value.begins_with("*"):
-						value = int(value.substr(1, len(value)))
-				
 				entity[name] = value
 		
 		if len(entity) != 0:
 			entities.push_back(entity)
+	
+	
 	
 	return entities
 
@@ -724,45 +715,66 @@ func _load_entities():
 			var entity = entities.spawn()
 			var evar = entity.get_meta("entvars")
 			
-			
 			if e.classname == "worldspawn":
-				evar.model = map.filename
-			
-			match e.classname:
+				evar["model"] = map.filename
 				
-				"worldspawn", "func_door":
+			match e.classname:
+			
+				_:#, "func_door":
 					
-					print(e)
+					var timer_entity = console.con_timer_create(console.DEBUG_LOW)
 					
 					for key in e:
 						if key in evar:
-							print(key)
-							evar[key] = e[key]
-#						else:
-#							match key:
-#								"angle":
-#
-#									var angles := Vector3()
-#
-#									match int(e["angle"]):
-#										-1:
-#											angles.y = -1.0
-#										-2:
-#											angles.y = -2.0
-#										_:
-#											angles.x = int(e["angle"])
-#
-#									evar["angles"] = angles
-#									print(angles)
+							# -----------------------------------------------------
+							# set entity fields
+							# -----------------------------------------------------
+							match typeof(evar[key]):
+								TYPE_STRING:
+									evar[key] = str(e[key])
+#									print("%s -- string: %s" % [key, evar[key]])
+								TYPE_REAL:
+									evar[key] = float(e[key])
+#									print("%s -- float: %f"  % [key, evar[key]])
+								TYPE_VECTOR3:
+									var split = e[key].split(" ")
+									var x := float(split[0])
+									var y := float(split[1])
+									var z := float(split[2])
+									evar[key] = Vector3(x, y, z)
+#									print("%s -- vector: %f %f %f"  % [key, evar[key].x, evar[key].y, evar[key].z])
+								_:
+									console.con_print_warn("Enity field %s not set!" % key)
+									
+						else:
+							match key:
+								# -----------------------------------------------------
+								# angle hack
+								# -----------------------------------------------------
+								"angle":
+									var angles := Vector3()
+									match int(e["angle"]):
+										-1:
+											angles = Vector3(0.0, 0.0, 90.0)		# up
+										-2:
+											angles = Vector3(0.0, 0.0, -90.0)		# down
+										_:
+											angles.y = float(e["angle"])
+										
+									evar["angles"] = angles
+#									print("%s -- vector: %f %f %f"  % ["angles", evar["angles"].x, evar["angles"].y, evar["angles"].z])
 									
 									
 									
-							
+					#entity.set_meta("entvars", evar)
 					
 					progs.set_global_by_name("self", entity.get_instance_id())
 					progs.set_global_by_name("world", entity.get_instance_id())
 					
-					var timer_exec = console.con_timer_create()
+					console.con_print_debug(console.DEBUG_LOW, "---")
+					timer_entity.print("Entity %s parsed in " % e.classname)
+					
+					var timer_exec = console.con_timer_create(console.DEBUG_LOW)
 					progs.exec(e.classname)
 					timer_exec.print("Executed %s in " % e.classname)
 

@@ -2,12 +2,16 @@ extends Node
 
 var entities = Dictionary()
 
-
+var entvars_script : GDScript = null
 
 # -----------------------------------------------------
 # spawn
 # -----------------------------------------------------
 func spawn() -> Spatial:
+	
+	if entvars_script == null:
+		entvars_script = load(console.cvars["path_prefix"].value + "/cache/entvars.gd")
+	
 	var node = $"/root/world/map/origin/entities"
 	
 	var entity = Spatial.new()
@@ -15,7 +19,7 @@ func spawn() -> Spatial:
 	entity.name = str(id)
 	#entity.owner = node
 	
-	var entvars = load(console.cvars["path_prefix"].value + "/cache/entvars.gd").new()
+	var entvars = entvars_script.new()
 	
 	entity.set_meta("entvars", entvars)
 	
@@ -30,9 +34,10 @@ func spawn() -> Spatial:
 # -----------------------------------------------------
 # remove
 # -----------------------------------------------------
-func remove(id):
-#	entities[id].queue_free()
-#	entites.erase(id)
+func remove(ent : Spatial):
+#	
+	ent.remove_and_skip()
+
 	pass
 
 
