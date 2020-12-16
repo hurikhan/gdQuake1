@@ -30,6 +30,7 @@ parser_v3="*res://parser_v3.gd"
 bsp="*res://bsp.gd"
 progs="*res://progs.gd"
 entities="*res://entities.gd"
+physics="*res://physics.gd"
 cvars="*res://q1/cvars.gd"
 
 [debug]

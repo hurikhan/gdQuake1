@@ -1,5 +1,14 @@
 extends Node
 
+const CONTENTS_EMPTY 		:= -1
+const CONTENTS_SOLID		:= -2
+const CONTENTS_WATER		:= -3
+const CONTENTS_SLIME		:= -4
+const CONTENTS_LAVA			:= -5
+const CONTENTS_SKY			:= -6
+const CONTENTS_ORIGIN		:= -7
+const CONTENTS_CLIP			:= -8 
+
 var bsp_meshes = Array()
 var bsp_textures = Dictionary()
 
