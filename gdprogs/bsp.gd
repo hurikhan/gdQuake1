@@ -7,14 +7,13 @@ const CONTENTS_SLIME		:= -4
 const CONTENTS_LAVA			:= -5
 const CONTENTS_SKY			:= -6
 const CONTENTS_ORIGIN		:= -7
-const CONTENTS_CLIP			:= -8 
+const CONTENTS_CLIP			:= -8
 
 var bsp_meshes = Array()
 var bsp_textures = Dictionary()
 
 var map = Dictionary()
 var map_loaded = false
-var raw = Raw.new()
 
 var mutex_map_data = Mutex.new()
 var mutex_tscn_loading = Mutex.new()
@@ -386,6 +385,8 @@ func _get_lightmap(data, dir, struct):
 
 func _get_entities(data, header):
 	
+	var _data = data.subarray(header.entities.offset, header.entities.offset + header.entities.size)
+	
 	# Save entities.txt
 	var path = console.cvars["path_prefix"].value + "cache/" + "entities.txt"
 	
@@ -395,12 +396,14 @@ func _get_entities(data, header):
 	
 	var file = File.new()
 	var err = file.open(path, file.WRITE)
-	file.store_buffer(data.subarray(header.entities.offset, header.entities.offset + header.entities.size))
+	file.store_buffer(_data)
 	file.close()
 	
 	# Create entities dictionary
 	var entities = Array()
-	var s : String = raw.get_string(data, header.entities.offset, header.entities.size)
+	
+	var s := String(_data)
+	
 	var entries = s.split("{")
 	
 	for e in entries:
@@ -423,8 +426,6 @@ func _get_entities(data, header):
 		
 		if len(entity) != 0:
 			entities.push_back(entity)
-	
-	
 	
 	return entities
 
