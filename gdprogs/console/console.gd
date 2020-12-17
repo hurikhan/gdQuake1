@@ -1258,48 +1258,58 @@ func _confunc_cache_clear():
 
 func _confunc_console_sandbox():
 	
-	
-	var array = Array()
-	array.resize(100000)
-	
-	for i in range(100000):
-		if array[i] == null:
-			array[i] = 55
-	
-	
-	#con_print("%s: %d " % [typeof(array[0]), array[0]])
-	
-	var timer = con_timer_create()
-	
-	for j in range(10):
-		for i in range(100000):
-			if array[i] != null:
-				match typeof(array[i]):
+	console.con_print("OP_OR")
+	console.con_print(str(0.0 or 0.0))
+	console.con_print(str(1.0 or 0.0))
+	console.con_print(str(0.0 or 0.1))
 
-					TYPE_INT:
-						array[i] = 0.5
-					TYPE_OBJECT:
-						pass
-					TYPE_REAL:
-						pass
+	console.con_print("OP_AND")
+	console.con_print(str(0.0 and 0.0))
+	console.con_print(str(1.0 and 0.1))
+	console.con_print(str(0.0 and 0.1))
 	
-	timer.print("Sandbox code in ")
 	
-	var timer2 = con_timer_create()
-	
-	for j in range(10):
-		for i in range(100000):
-			if array[i] != null:
-				#var t = typeof(array[i])
-				
-				if TYPE_INT == typeof(array[i]):
-					array[i] = 0.5
-				elif TYPE_OBJECT == typeof(array[i]):
-					pass
-				elif TYPE_REAL == typeof(array[i]):
-					pass
-	
-	timer2.print("Sandbox code in ")
+#	var array = Array()
+#	array.resize(100000)
+#
+#	for i in range(100000):
+#		if array[i] == null:
+#			array[i] = 55
+#
+#
+#	#con_print("%s: %d " % [typeof(array[0]), array[0]])
+#
+#	var timer = con_timer_create()
+#
+#	for j in range(10):
+#		for i in range(100000):
+#			if array[i] != null:
+#				match typeof(array[i]):
+#
+#					TYPE_INT:
+#						array[i] = 0.5
+#					TYPE_OBJECT:
+#						pass
+#					TYPE_REAL:
+#						pass
+#
+#	timer.print("Sandbox code in ")
+#
+#	var timer2 = con_timer_create()
+#
+#	for j in range(10):
+#		for i in range(100000):
+#			if array[i] != null:
+#				#var t = typeof(array[i])
+#
+#				if TYPE_INT == typeof(array[i]):
+#					array[i] = 0.5
+#				elif TYPE_OBJECT == typeof(array[i]):
+#					pass
+#				elif TYPE_REAL == typeof(array[i]):
+#					pass
+#
+#	timer2.print("Sandbox code in ")
 	
 	#con_print("%s: %d " % [typeof(array[0]), array[0]])
 	

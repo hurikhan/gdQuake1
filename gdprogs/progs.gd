@@ -1027,6 +1027,9 @@ func exec(p_function):
 			opcode.OP_MUL_V:
 				_OP_MUL_V(st)
 			
+			opcode.OP_MUL_FV:
+				_OP_MUL_FV(st)
+			
 			opcode.OP_MUL_VF:
 				_OP_MUL_VF(st)
 			
@@ -1035,6 +1038,9 @@ func exec(p_function):
 			
 			opcode.OP_BITAND:
 				_OP_BITAND(st)
+			
+			opcode.OP_BITOR:
+				_OP_BITOR(st)
 			
 			opcode.OP_GE:
 				_OP_GE(st)
@@ -1045,14 +1051,29 @@ func exec(p_function):
 			opcode.OP_GT:
 				_OP_GT(st)
 			
+			opcode.OP_LT:
+				_OP_LT(st)
+			
 			opcode.OP_OR:
+				_OP_OR(st)
+			
+			opcode.OP_AND:
 				_OP_OR(st)
 			
 			opcode.OP_NOT_F:
 				_OP_NOT_F(st)
 			
+			opcode.OP_NOT_V:
+				_OP_NOT_V(st)
+			
 			opcode.OP_NOT_S:
 				_OP_NOT_S(st)
+			
+			opcode.OP_NOT_FNC:
+				_OP_NOT_FNC(st)
+			
+			opcode.OP_NOT_ENT:
+				_OP_NOT_ENT(st)
 			
 			opcode.OP_EQ_F:
 				_OP_EQ_F(st)
@@ -1063,8 +1084,26 @@ func exec(p_function):
 			opcode.OP_EQ_S:
 				_OP_EQ_S(st)
 			
+			opcode.OP_EQ_E:
+				_OP_EQ_E(st)
+			
+			opcode.OP_EQ_FNC:
+				_OP_EQ_FNC(st)
+			
+			opcode.OP_NE_F:
+				_OP_NE_F(st)
+			
 			opcode.OP_NE_V:
 				_OP_NE_V(st)
+			
+			opcode.OP_NE_S:
+				_OP_NE_S(st)
+			
+			opcode.OP_NE_E:
+				_OP_NE_E(st)
+			
+			opcode.OP_EQ_FNC:
+				_OP_EQ_FNC(st)
 			
 			opcode.OP_STORE_F, opcode.OP_STORE_ENT, opcode.OP_STORE_FLD, opcode.OP_STORE_S, opcode.OP_STORE_FNC:
 				_OP_STORE(st)
@@ -1107,7 +1146,6 @@ func exec(p_function):
 					console.con_print_debug(console.DEBUG_MEDIUM,
 							"function: %d done.",
 							[ func_num ] ) 
-					
 					break
 				
 			_:
@@ -1121,6 +1159,7 @@ func _OP_ADD_F(st):
 	var vb := _get_global_float(st.b)
 	
 	_set_global_float(st.c, va + vb)
+
 
 
 func _OP_ADD_V(st):
@@ -1163,10 +1202,17 @@ func _OP_MUL_V(st):
 
 
 
+func _OP_MUL_FV(st):
+	var va := _get_global_float(st.a)
+	var vb := _get_global_vector(st.b)
+	
+	_set_global_vector(st.c, va * vb)
+
+
 
 func _OP_MUL_VF(st):
 	var va := _get_global_vector(st.a)
-	var vb := _get_global_vector(st.b)
+	var vb := _get_global_float(st.b)
 	
 	_set_global_vector(st.c, va * vb)
 
@@ -1185,6 +1231,17 @@ func _OP_BITAND(st):
 	var vb := int(_get_global_float(st.b))
 	
 	var vc = va & vb
+	vc = vc & 0xFFFFFFFF
+	
+	_set_global_float(st.c, float(vc))
+
+
+
+func _OP_BITOR(st):
+	var va := int(_get_global_float(st.a))
+	var vb := int(_get_global_float(st.b))
+	
+	var vc = va | vb
 	vc = vc & 0xFFFFFFFF
 	
 	_set_global_float(st.c, float(vc))
@@ -1224,6 +1281,38 @@ func _OP_GT(st):
 
 
 
+func _OP_LT(st):
+	var va := _get_global_float(st.a)
+	var vb := _get_global_float(st.b)
+	
+	if va < vb:
+		_set_global_float(st.c, 1.0)
+	else:
+		_set_global_float(st.c, 0.0)
+
+
+
+func _OP_OR(st):
+	var va := _get_global_float(st.a)
+	var vb := _get_global_float(st.b)
+	
+	if va or vb:
+		_set_global_float(st.c, 1.0 )
+	else:
+		_set_global_float(st.c, 0.0 )
+
+
+
+func _OP_AND(st):
+	var va := _get_global_float(st.a)
+	var vb := _get_global_float(st.b)
+	
+	if va and vb:
+		_set_global_float(st.c, 1.0 )
+	else:
+		_set_global_float(st.c, 0.0 )
+
+
 func _OP_NOT_F(st):
 	var va := _get_global_float(st.a)
 	
@@ -1234,11 +1323,13 @@ func _OP_NOT_F(st):
 
 
 
-func _OP_OR(st):
-	var va := int(_get_global_float(st.a))
-	var vb := int(_get_global_float(st.b))
+func _OP_NOT_V(st):
+	var va := _get_global_vector(st.a)
 	
-	_set_global_float(st.c, float( va | vb) )
+	if va == Vector3(0.0, 0.0, 0.0):
+		_set_global_float(st.c, 1.0)
+	else:
+		_set_global_float(st.c, 0.0)
 
 
 
@@ -1249,6 +1340,26 @@ func _OP_NOT_S(st):
 		_set_global_float(st.c, 0.0)
 	else:
 		_set_global_float(st.c, 1.0)
+
+
+
+func _OP_NOT_FNC(st):
+	var va := _get_global_int(st.a)
+	
+	if va == 0:
+		_set_global_float(st.c, 1.0)
+	else:
+		_set_global_float(st.c, 0.0)
+
+
+
+func _OP_NOT_ENT(st):
+	var va := _get_global_int(st.a)
+	
+	if va == 0:
+		_set_global_float(st.c, 1.0)
+	else:
+		_set_global_float(st.c, 0.0)
 
 
 
@@ -1285,10 +1396,75 @@ func _OP_EQ_S(st):
 
 
 
-func _OP_NE_V(st):
+func _OP_EQ_E(st):
+	var va := _get_global_int(st.a)
+	var vb := _get_global_int(st.b)
 	
+	if va == vb:
+		_set_global_float(st.c, 1.0)
+	else:
+		_set_global_float(st.c, 0.0)
+
+
+
+func _OP_EQ_FNC(st):
+	var va := _get_global_int(st.a)
+	var vb := _get_global_int(st.b)
+	
+	if va == vb:
+		_set_global_float(st.c, 1.0)
+	else:
+		_set_global_float(st.c, 0.0)
+
+
+
+func _OP_NE_F(st):
+	var va := _get_global_float(st.a)
+	var vb := _get_global_float(st.b)
+	
+	if va != vb:
+		_set_global_float(st.c, 1.0)
+	else:
+		_set_global_float(st.c, 0.0)
+
+
+
+func _OP_NE_V(st):
 	var va := _get_global_vector(st.a)
 	var vb := _get_global_vector(st.b)
+	
+	if va != vb:
+		_set_global_float(st.c, 1.0)
+	else:
+		_set_global_float(st.c, 0.0)
+
+
+
+func _OP_NE_S(st):
+	var va := _get_global_string(st.a)
+	var vb := _get_global_string(st.b)
+	
+	if va != vb:
+		_set_global_float(st.c, 1.0)
+	else:
+		_set_global_float(st.c, 0.0)
+
+
+
+func _OP_NE_E(st):
+	var va := _get_global_int(st.a)
+	var vb := _get_global_int(st.b)
+	
+	if va != vb:
+		_set_global_float(st.c, 1.0)
+	else:
+		_set_global_float(st.c, 0.0)
+
+
+
+func _OP_NE_FNC(st):
+	var va := _get_global_int(st.a)
+	var vb := _get_global_int(st.b)
 	
 	if va != vb:
 		_set_global_float(st.c, 1.0)
@@ -1451,6 +1627,10 @@ func _OP_CALL(st, s):
 	else:
 		# call quakec function
 		return _PR_EnterFunction(va)
+
+
+
+##FIXME: OP_STATE
 
 
 
