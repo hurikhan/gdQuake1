@@ -5,69 +5,34 @@ enum {RETURN_AS_DICT, RETURN_AS_ARRAY, RETURN_UNWRAPPED}
 enum {NO_OFFSET = -2^63}
 
 var parsers = Dictionary()
-var buffer = StreamPeerBuffer.new()
-var file = File.new()
 
 
-
-func create(name):
+func create(name, filename):
 	var p = Parser_v3.new()
-	p.name = name
 	p.this = self
+	p.name = name
+	p.file_name = filename
 	parsers[name] = p
 	return p
 
 
-
-func open_file(filename):
-	var err = file.open(filename, File.READ)
-	buffer.resize(file.get_len())
-	buffer.data_array = file.get_buffer(file.get_len())
-	buffer.seek(0)
-
-
-
-func close_file():
-#	buffer.data_array = null
-	file.close()
-
-
-
-func get_string(offset = NO_OFFSET):
-	if offset != NO_OFFSET:
-		buffer.seek(offset)
-	
-	var s : String = ""
-		
-	for i in range(0,2048):
-		
-		var u8 = buffer.get_u8()
-		
-		if u8 == 0:
-			break
-		else:
-			s += char(u8)
-	
-	return s
-
-
-
-func set_offset(offset):
-	buffer.seek(offset)
-
-
-
-func get_offset():
-	return buffer.get_position()
+func clear():
+	parsers.clear()
 
 
 
 class Parser_v3:
-	var name = ""
+	var name := ""
 	var this
-	var entries = Array()
-	var current_entries = Dictionary()
-	var eval_mode = RETURN_AS_DICT
+	var entries := Array()
+	var current_entries := Dictionary()
+	var eval_mode := RETURN_AS_DICT
+	
+	var buffer := StreamPeerBuffer.new()
+	var file := File.new()
+	
+	var file_name := ""
+	var file_opened := false
 	
 	
 	func set_eval_mode(mode):
@@ -76,8 +41,11 @@ class Parser_v3:
 	
 	func eval(start=-1):
 		
+		if not file_opened:
+			open_file()
+		
 		if start != -1:
-			this.buffer.seek(start)
+			buffer.seek(start)
 		
 		self.current_entries = Dictionary()
 		
@@ -119,29 +87,31 @@ class Parser_v3:
 		# Load basic type
 		# -------------------------------------------
 		if typeof(type) == TYPE_STRING:
-			var pos = this.buffer.get_position()
-			return this.parsers[type].eval(pos)
+			var pos = buffer.get_position()
+			var ret = this.parsers[type].eval(pos)
+			buffer.seek(pos + this.parsers[type].get_size())
+			return ret
 		else:
 			match type:
 				T_U32:
-					return this.buffer.get_u32()
+					return buffer.get_u32()
 				T_VEC3:
-					var x = this.buffer.get_float()
-					var y = this.buffer.get_float()
-					var z = this.buffer.get_float()
+					var x = buffer.get_float()
+					var y = buffer.get_float()
+					var z = buffer.get_float()
 					return Vector3(x, y, z)
 				T_F32:
-					return this.buffer.get_float()
+					return buffer.get_float()
 				T_U8:
-					return this.buffer.get_u8()
+					return buffer.get_u8()
 				T_U16:
-					return this.buffer.get_u16()
+					return buffer.get_u16()
 				T_STRING:
-					return this.buffer.get_string(count)
+					return buffer.get_string(count)
 				T_I16:
-					return this.buffer.get_16()
+					return buffer.get_16()
 				T_I32:
-					return this.buffer.get_32()
+					return buffer.get_32()
 
 
 	
@@ -186,3 +156,44 @@ class Parser_v3:
 				return 4
 			T_F32:
 				return 4
+	
+	
+	func open_file():
+		var err = file.open(file_name, File.READ)
+		buffer.resize(file.get_len())
+		buffer.data_array = file.get_buffer(file.get_len())
+		buffer.seek(0)
+		file_opened = true
+	
+	
+	func close_file():
+		file.close()
+	
+	
+	func set_offset(offset):
+		if not file_opened:
+			open_file()
+		
+		buffer.seek(offset)
+	
+	
+	func get_offset():
+		return buffer.get_position()
+	
+	
+	func get_string(offset = NO_OFFSET):
+		if offset != NO_OFFSET:
+			buffer.seek(offset)
+		
+		var s : String = ""
+			
+		for i in range(0,2048):
+			
+			var u8 = buffer.get_u8()
+			
+			if u8 == 0:
+				break
+			else:
+				s += char(u8)
+		
+		return s

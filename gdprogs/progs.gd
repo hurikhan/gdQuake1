@@ -34,12 +34,12 @@ func load_progs(filename):
 	
 	else:
 		
-		parser_v3.open_file(console.cvars["path_prefix"].value + "id1-x/" + filename)
+		var _filename = console.cvars["path_prefix"].value + "id1-x/" + filename
 		
 		# -----------------------------------------------------
 		# dprograms_t
 		# -----------------------------------------------------
-		var dprograms_t = parser_v3.create("dprograms_t")
+		var dprograms_t = parser_v3.create("dprograms_t", _filename)
 		dprograms_t.add("version",			parser_v3.T_U32		)
 		dprograms_t.add("crc",				parser_v3.T_U32		)
 		dprograms_t.add("ofs_statements",	parser_v3.T_U32		)
@@ -59,24 +59,32 @@ func load_progs(filename):
 		# -----------------------------------------------------
 		# statement_t
 		# -----------------------------------------------------
-		var statement_t = parser_v3.create("statement_t")
+		var statement_t = parser_v3.create("statement_t", _filename)
 		statement_t.add("op",	parser_v3.T_U16		)
 		statement_t.add("a",	parser_v3.T_U16		)
 		statement_t.add("b",	parser_v3.T_U16		)
 		statement_t.add("c",	parser_v3.T_U16		)
 		
 		# -----------------------------------------------------
-		# def_t
+		# globaldef_t
 		# -----------------------------------------------------
-		var def_t = parser_v3.create("def_t")
-		def_t.add("type",		parser_v3.T_U16		)
-		def_t.add("offset",		parser_v3.T_U16		)
-		def_t.add("s_name",		parser_v3.T_U32		)
+		var globaldef_t = parser_v3.create("globaldef_t", _filename)
+		globaldef_t.add("type",		parser_v3.T_U16		)
+		globaldef_t.add("offset",		parser_v3.T_U16		)
+		globaldef_t.add("s_name",		parser_v3.T_U32		)
+		
+		# -----------------------------------------------------
+		# fielddef_t
+		# -----------------------------------------------------
+		var fielddef_t = parser_v3.create("fielddef_t", _filename)
+		fielddef_t.add("type",		parser_v3.T_U16		)
+		fielddef_t.add("offset",		parser_v3.T_U16		)
+		fielddef_t.add("s_name",		parser_v3.T_U32		)
 		
 		# -----------------------------------------------------
 		# function_t
 		# -----------------------------------------------------
-		var function_t = parser_v3.create("function_t")
+		var function_t = parser_v3.create("function_t", _filename)
 		function_t.add("first_statement",	parser_v3.T_I32			)
 		function_t.add("parm_start",		parser_v3.T_I32			)
 		function_t.add("locals",			parser_v3.T_I32			)
@@ -87,17 +95,22 @@ func load_progs(filename):
 		function_t.add("parm_size",			parser_v3.T_U8,		8	)
 		
 		# -----------------------------------------------------
+		# strings_t
+		# -----------------------------------------------------
+		var strings_t = parser_v3.create("strings_t", _filename)
+		
+		# -----------------------------------------------------
 		# Eval
 		# -----------------------------------------------------
 		_get_dprograms(dprograms_t)
-		_get_strings()
-		_get_globaldefs(def_t)
-		_get_globals()
-		_get_fielddefs(def_t)
+		_get_strings(strings_t)
+		_get_globaldefs(globaldef_t)
+		_get_globals(globaldef_t)
+		_get_fielddefs(fielddef_t)
 		_get_functions(function_t)
 		_get_statements(statement_t)
 		
-		parser_v3.close_file()
+		parser_v3.clear()
 		
 		if console.cvars["cache"].value == 1:
 			dir.make_dir_recursive( path.get_base_dir() )
@@ -139,17 +152,19 @@ func _get_dprograms(struct):
 # -----------------------------------------------------
 # _get_strings
 # -----------------------------------------------------
-func _get_strings():
+func _get_strings(struct):
 	var offset = progs.dprograms.ofs_strings
 	var end = progs.dprograms.ofs_strings + progs.dprograms.size_strings
 	
 	var sdict = Dictionary()
 	
-	parser_v3.set_offset(offset)
+
 	
-	while parser_v3.get_offset() < end:
-		var key = parser_v3.get_offset() - offset
-		var s = parser_v3.get_string()
+	struct.set_offset(offset)
+	
+	while struct.get_offset() < end:
+		var key = struct.get_offset() - offset
+		var s = struct.get_string()
 		
 		sdict[key] = s
 	
@@ -267,7 +282,7 @@ func _get_globaldefs(struct):
 # -----------------------------------------------------
 # _get_globals
 # -----------------------------------------------------
-func _get_globals():
+func _get_globals(struct):
 	
 	##debug##
 	var timer := console.con_timer_create(console.DEBUG_LOW)
@@ -295,7 +310,7 @@ func _get_globals():
 	# ------------------------------------
 	# globals
 	# ------------------------------------
-	var data = parser_v3.buffer.data_array
+	var data = struct.buffer.data_array
 	var start = progs.dprograms.ofs_globals
 	var end = progs.dprograms.ofs_globals + progs.dprograms.num_globals * 4 - 1
 	
